@@ -1,5 +1,5 @@
 import { entriesToCsv } from '../csv';
-import { remainingLabel, signatureOf, totalsOf, type Entry } from '../entry';
+import { isStarred, portionAfterEdit, remainingLabel, signatureOf, totalsOf, type Entry } from '../entry';
 import { rankRecents } from '../recents';
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour, 0).getTime();
@@ -45,6 +45,44 @@ describe('signature', () => {
 
   it('prefers the Food over the name', () => {
     expect(signatureOf({ name: 'Clif Bar', foodId: 'off:123' })).toBe('food:off:123');
+  });
+});
+
+describe('portionAfterEdit', () => {
+  const fromFood = entry({ foodId: 'off:123', portion: '150 g', kcal: 300, protein: 10, carbs: 40, fat: null });
+  const numbers = { kcal: 300, protein: 10, carbs: 40, fat: null };
+
+  it('keeps the Portion while the numbers are untouched', () => {
+    expect(portionAfterEdit(fromFood, numbers)).toBe('150 g');
+  });
+
+  it('drops the Portion once calories change', () => {
+    expect(portionAfterEdit(fromFood, { ...numbers, kcal: 320 })).toBeNull();
+  });
+
+  it('drops the Portion once any macro changes, including one added or cleared', () => {
+    expect(portionAfterEdit(fromFood, { ...numbers, protein: 12 })).toBeNull();
+    expect(portionAfterEdit(fromFood, { ...numbers, fat: 5 })).toBeNull();
+    expect(portionAfterEdit(fromFood, { ...numbers, carbs: null })).toBeNull();
+  });
+});
+
+describe('isStarred', () => {
+  const favs = [{ signature: 'quick:coffee' }, { signature: 'food:off:123' }];
+
+  it('shows an existing Favourite as starred until the user taps', () => {
+    expect(isStarred(null, 'quick:coffee', favs)).toBe(true);
+    expect(isStarred(null, 'quick:tea', favs)).toBe(false);
+    expect(isStarred(null, 'food:off:123', favs)).toBe(true);
+  });
+
+  it("follows the user's tap over what is stored", () => {
+    expect(isStarred(false, 'quick:coffee', favs)).toBe(false);
+    expect(isStarred(true, 'quick:tea', favs)).toBe(true);
+  });
+
+  it('never stars something with no identity', () => {
+    expect(isStarred(true, null, favs)).toBe(false);
   });
 });
 

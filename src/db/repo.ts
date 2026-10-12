@@ -101,14 +101,15 @@ async function maybeCelebrate(db: SQLiteDatabase, day: DayKey): Promise<void> {
   emitFirstOfDay();
 }
 
+/** Changes an Entry's name, Nutrition and Portion; its Day, time and Food stay as logged. */
 export async function updateEntry(
   db: SQLiteDatabase,
   id: string,
-  e: Nutrition & { name: string | null },
+  e: Nutrition & { name: string | null; portion: string | null },
 ): Promise<void> {
   await db.runAsync(
-    'UPDATE entries SET name = ?, kcal = ?, protein = ?, carbs = ?, fat = ?, updated_at = ? WHERE id = ?',
-    e.name, e.kcal, e.protein, e.carbs, e.fat, Date.now(), id,
+    'UPDATE entries SET name = ?, kcal = ?, protein = ?, carbs = ?, fat = ?, portion = ?, updated_at = ? WHERE id = ?',
+    e.name, e.kcal, e.protein, e.carbs, e.fat, e.portion, Date.now(), id,
   );
   notifyChanged();
   const row = await db.getFirstAsync<EntryRow & { updated_at: number }>('SELECT * FROM entries WHERE id = ?', id);

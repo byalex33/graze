@@ -1,6 +1,16 @@
-import { addDays, dayKeyOf, dayLabel, daysBetween, eatenAtFor } from '../day';
+import { addDays, dayKeyOf, dayLabel, daysBetween, eatenAtFor, isDayKey } from '../day';
 
 describe('Day', () => {
+  it('recognises only real calendar dates as DayKeys', () => {
+    expect(isDayKey('2026-10-12')).toBe(true);
+    expect(isDayKey('2028-02-29')).toBe(true);
+    expect(isDayKey('2026-02-30')).toBe(false);
+    expect(isDayKey('2026-1-5')).toBe(false);
+    expect(isDayKey('junk')).toBe(false);
+    expect(isDayKey(undefined)).toBe(false);
+    expect(isDayKey(['2026-10-12'])).toBe(false);
+  });
+
   it('belongs to the local calendar date, so a 00:40 snack is the new Day', () => {
     expect(dayKeyOf(new Date(2026, 9, 12, 0, 40))).toBe('2026-10-12');
     expect(dayKeyOf(new Date(2026, 9, 11, 23, 59))).toBe('2026-10-11');

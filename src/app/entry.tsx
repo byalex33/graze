@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -17,11 +17,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
-import { addEntry, deleteEntry, favourites, getEntry, isFavourite, setFavourite, updateEntry } from '@/db/repo';
-import { dayKeyOf, dayLabel, eatenAtFor, type DayKey } from '@/domain/day';
-import { formatNumber, signatureOf, type Nutrition, type Relog } from '@/domain/entry';
+import { addEntry, deleteEntry, favourites, getEntry, setFavourite, updateEntry } from '@/db/repo';
+import { dayKeyOf, dayLabel, eatenAtFor, isDayKey } from '@/domain/day';
+import { formatNumber, isStarred, portionAfterEdit, signatureOf, type Entry, type Nutrition, type Relog } from '@/domain/entry';
 import { StarIcon } from '@/ui/icons';
 import { color, radius, space, type } from '@/ui/theme';
+import { useOnce } from '@/ui/use-once';
 
 /** "" → null; "12,5" → 12.5; nonsense → NaN. */
 function parseAmount(text: string): number | null {
@@ -63,18 +64,21 @@ function Field({
 export default function EntryScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id?: string; day?: DayKey }>();
+  const params = useLocalSearchParams<{ id?: string; day?: string }>();
   const editingId = params.id;
-  const day = params.day ?? dayKeyOf(new Date());
+  const day = isDayKey(params.day) ? params.day : dayKeyOf(new Date());
 
   const [name, setName] = useState('');
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
-  const [starred, setStarred] = useState(false);
-  const [entryDay, setEntryDay] = useState<DayKey>(day);
-  const loaded = useRef(!editingId);
+  /** Null until the user taps the star: only a tap writes or removes a Favourite. */
+  const [starred, setStarred] = useState<boolean | null>(null);
+  /** The Entry being edited, as loaded. */
+  const [original, setOriginal] = useState<Entry | null>(null);
+  const loaded = !editingId || original !== null;
+  const entryDay = original?.day ?? day;
 
   const favs = useQuery(favourites, []);
 
@@ -94,10 +98,7 @@ export default function EntryScreen() {
       setProtein(asText(e.protein));
       setCarbs(asText(e.carbs));
       setFat(asText(e.fat));
-      setEntryDay(e.day);
-      const sig = signatureOf(e);
-      setStarred(sig ? await isFavourite(db, sig) : false);
-      loaded.current = true;
+      setOriginal(e);
     })();
   }, [db, editingId]);
 
@@ -111,12 +112,19 @@ export default function EntryScreen() {
     values.kcal !== null && values.kcal >= 0 &&
     [values.kcal, values.protein, values.carbs, values.fat].every((v) => v === null || (Number.isFinite(v) && v >= 0));
   const trimmedName = name.trim() || null;
+  // An edited Entry keeps its Food, so its signature matches the Favourite it was loaded with.
+  const foodId = original?.foodId ?? null;
+  const starFilled = !!trimmedName && isStarred(starred, signatureOf({ name: trimmedName, foodId }), favs ?? []);
+
+  // One lock for every action that closes the screen, so double taps (or two different taps) log once.
+  const [once, busy] = useOnce((action: () => Promise<void>) => action());
+  const canSave = valid && loaded && !busy;
 
   const save = async () => {
-    if (!valid || !loaded.current) return;
     const nutrition = values as Nutrition;
+    const portion = original ? portionAfterEdit(original, nutrition) : null;
     if (editingId) {
-      await updateEntry(db, editingId, { ...nutrition, name: trimmedName });
+      await updateEntry(db, editingId, { ...nutrition, name: trimmedName, portion });
     } else {
       await addEntry(db, {
         ...nutrition,
@@ -127,7 +135,7 @@ export default function EntryScreen() {
         portion: null,
       });
     }
-    if (trimmedName) await setFavourite(db, { ...nutrition, name: trimmedName, foodId: null }, starred);
+    if (starred !== null && trimmedName) await setFavourite(db, { ...nutrition, name: trimmedName, foodId, portion }, starred);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     close();
   };
@@ -144,10 +152,11 @@ export default function EntryScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteEntry(db, editingId!);
-          close();
-        },
+        onPress: () =>
+          once(async () => {
+            await deleteEntry(db, editingId!);
+            close();
+          }),
       },
     ]);
 
@@ -164,8 +173,8 @@ export default function EntryScreen() {
           <Text style={type.bodyStrong}>{editingId ? 'Edit' : 'Quick Add'}</Text>
           <Text style={type.small}>{dayLabel(entryDay)}</Text>
         </View>
-        <Pressable hitSlop={12} disabled={!valid} onPress={save}>
-          <Text style={[type.bodyStrong, !valid && { color: color.faint }]}>Save</Text>
+        <Pressable hitSlop={12} disabled={!canSave} onPress={() => once(save)}>
+          <Text style={[type.bodyStrong, !canSave && { color: color.faint }]}>Save</Text>
         </Pressable>
       </View>
 
@@ -177,7 +186,7 @@ export default function EntryScreen() {
               {favs.map((f) => (
                 <Pressable
                   key={f.signature}
-                  onPress={() => relogFavourite(f)}
+                  onPress={() => once(() => relogFavourite(f))}
                   style={({ pressed }) => [styles.chip, pressed && { opacity: 0.6 }]}
                 >
                   <Text style={type.bodyStrong} numberOfLines={1}>{f.name}</Text>
@@ -206,11 +215,11 @@ export default function EntryScreen() {
           disabled={!trimmedName}
           onPress={() => {
             Haptics.selectionAsync();
-            setStarred((s) => !s);
+            setStarred(!starFilled);
           }}
           style={[styles.card, styles.favRow, !trimmedName && { opacity: 0.4 }]}
         >
-          <StarIcon filled={starred && !!trimmedName} />
+          <StarIcon filled={starFilled} />
           <Text style={[type.body, { flex: 1 }]}>Favourite</Text>
           {!trimmedName && <Text style={type.small}>Needs a name</Text>}
         </Pressable>

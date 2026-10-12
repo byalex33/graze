@@ -13,7 +13,7 @@ import { rankRecents } from '@/domain/recents';
 import { syncReminders } from '@/reminder/scheduler';
 import { AccentToast } from '@/ui/accent-toast';
 import { Celebration } from '@/ui/celebration';
-import { DayPage, HEATMAP_WEEKS } from '@/ui/day-page';
+import { DayPage, TREND_DAYS } from '@/ui/day-page';
 import { FabMenu } from '@/ui/fab-menu';
 import { GearIcon } from '@/ui/icons';
 import { color, space, type } from '@/ui/theme';
@@ -59,8 +59,9 @@ export default function Today() {
     };
   }, []);
   const recentEntries = useQuery((d) => entriesSince(d, Date.now() - RECENTS_WINDOW_MS), [today]);
-  // Enough history for the heatmap plus the sparkline on the oldest heatmap Day.
-  const stats = useQuery((d) => dayStatsSince(d, addDays(today, -(HEATMAP_WEEKS * 7 + 14))), [today]);
+  // Every swipeable Day plus the sparkline before the oldest one (which also covers the heatmap).
+  // At most one small row per Logged Day, so the whole window is cheap to load.
+  const stats = useQuery((d) => dayStatsSince(d, addDays(today, -(DAYS_BACK - 1 + TREND_DAYS - 1))), [today]);
   const recents = useMemo(() => (recentEntries ? rankRecents(recentEntries, new Date(), 3) : []), [recentEntries]);
 
   // Index 0 is today; the list is inverted so older Days are to the left.

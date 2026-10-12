@@ -1,15 +1,12 @@
-import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
-import { allEntries, deleteAllData, getGoal, setGoal } from '@/db/repo';
-import { entriesToCsv } from '@/domain/csv';
-import { dayKeyOf } from '@/domain/day';
+import { exportCsv } from '@/db/export';
+import { deleteAllData, getGoal, setGoal } from '@/db/repo';
 import type { Goal } from '@/domain/entry';
 import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
@@ -40,15 +37,7 @@ export default function Settings() {
 
   const changeGoal = (g: Goal) => {
     setLocalGoal(g);
-    setGoal(db, g);
-  };
-
-  const exportCsv = async () => {
-    const file = new File(Paths.cache, `graze-${dayKeyOf(new Date())}.csv`);
-    if (file.exists) file.delete();
-    file.create();
-    file.write(entriesToCsv(await allEntries(db)));
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Export Graze data', UTI: 'public.comma-separated-values-text' });
+    setGoal(db, g).catch((e) => console.warn('Saving the Goal failed', e));
   };
 
   const confirmDeleteAll = () =>
@@ -97,7 +86,7 @@ export default function Settings() {
 
       <Text style={[type.label, styles.section]}>Your data</Text>
       <View style={styles.card}>
-        <Row label="Export as CSV" onPress={exportCsv} />
+        <Row label="Export as CSV" onPress={() => exportCsv(db)} />
         <View style={styles.divider} />
         <Row label="Delete all data" danger onPress={confirmDeleteAll} />
       </View>
