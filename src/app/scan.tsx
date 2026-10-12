@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dayKeyOf, type DayKey } from '@/domain/day';
 import { lookupBarcode, OffError } from '@/food/open-food-facts';
 import { rememberFood } from '@/food/registry';
+import { FlashIcon } from '@/ui/icons';
 import { color, radius, space, type } from '@/ui/theme';
 
 type State = { kind: 'scanning' } | { kind: 'looking'; code: string } | { kind: 'missing'; code: string; reason: string };
@@ -22,6 +23,7 @@ export default function Scan() {
   const day = params.day ?? dayKeyOf(new Date());
   const [permission, requestPermission] = useCameraPermissions();
   const [state, setState] = useState<State>({ kind: 'scanning' });
+  const [torch, setTorch] = useState(false);
   const busy = useRef(false);
 
   const onScanned = async ({ data }: BarcodeScanningResult) => {
@@ -72,6 +74,7 @@ export default function Scan() {
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
+        enableTorch={torch}
         barcodeScannerSettings={{ barcodeTypes: [...FOOD_BARCODES] }}
         onBarcodeScanned={state.kind === 'scanning' ? onScanned : undefined}
       />
@@ -82,6 +85,19 @@ export default function Scan() {
       <View style={[styles.top, { paddingTop: insets.top + space.md }]}>
         <Pressable hitSlop={12} onPress={() => router.back()}>
           <Text style={type.bodyStrong}>Cancel</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel="Torch"
+          accessibilityState={{ checked: torch }}
+          hitSlop={10}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setTorch((on) => !on);
+          }}
+          style={[styles.torch, torch && styles.torchOn]}
+        >
+          <FlashIcon size={20} tint={torch ? color.bg : color.text} filled={torch} />
         </Pressable>
       </View>
 
@@ -133,7 +149,9 @@ const styles = StyleSheet.create({
     // A huge shadow-coloured border darkens everything outside the window.
     boxShadow: '0 0 0 2000px rgba(10,10,10,0.55)',
   },
-  top: { position: 'absolute', left: space.lg, right: space.lg, flexDirection: 'row' },
+  top: { position: 'absolute', left: space.lg, right: space.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  torch: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,10,0.55)' },
+  torchOn: { backgroundColor: color.text },
   bottom: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   card: {
     alignSelf: 'stretch',

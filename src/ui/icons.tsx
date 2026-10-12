@@ -176,3 +176,11 @@ export function ClockIcon({ size = 20, tint = color.text }: IconProps) {
     </Svg>
   );
 }
+
+export function FlashIcon({ size = 20, tint = color.text, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M13 3L5.5 13.5H12L11 21l7.5-10.5H12L13 3z" {...stroke(tint)} fill={filled ? tint : 'none'} />
+    </Svg>
+  );
+}
