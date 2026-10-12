@@ -6,7 +6,8 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { useQuery } from '@/db/changes';
-import { deleteEntry, entriesForDay, getWeightUnit } from '@/db/repo';
+import { deleteEntry, entriesForDay, getTodayLayout, getWeightUnit } from '@/db/repo';
+import { DEFAULT_TODAY_LAYOUT, type TodayLayout } from '@/domain/today-layout';
 import { addDays, clockTime, dayLabel, startOfDay, type DayKey } from '@/domain/day';
 import { formatNumber, totalsOf, type Entry, type Goal } from '@/domain/entry';
 import { averageLogged, series, type DayStat } from '@/domain/stats';
@@ -69,7 +70,7 @@ function WeightCard({ day, today }: { day: DayKey; today: DayKey }) {
   );
 }
 
-function Hero({ entries, goal, day, today }: { entries: readonly Entry[]; goal: Goal; day: DayKey; today: DayKey }) {
+function Hero({ entries, goal, day, today, layout }: { entries: readonly Entry[]; goal: Goal; day: DayKey; today: DayKey; layout: TodayLayout }) {
   const t = totalsOf(entries);
   const left = Math.round(goal.kcal - t.kcal);
   const over = left < 0;
@@ -83,10 +84,12 @@ function Hero({ entries, goal, day, today }: { entries: readonly Entry[]; goal: 
       <Text style={type.small}>
         {formatNumber(t.kcal)} eaten · {formatNumber(goal.kcal)} goal
       </Text>
-      <View style={{ marginTop: space.lg }}>
-        <DayBar kcals={entries.map((e) => e.kcal)} goal={goal.kcal} />
-      </View>
-      <BurnedLine day={day} today={today} eaten={t.kcal} />
+      {layout.dayBar && (
+        <View style={{ marginTop: space.lg }}>
+          <DayBar kcals={entries.map((e) => e.kcal)} goal={goal.kcal} />
+        </View>
+      )}
+      {layout.burned && <BurnedLine day={day} today={today} eaten={t.kcal} />}
     </View>
   );
 }
@@ -166,6 +169,7 @@ interface DayPageProps {
 /** One Day: what's left, what it was made of, then how it sits in the last few weeks. */
 export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectDay }: DayPageProps) {
   const entries = useQuery((db) => entriesForDay(db, day), [day]);
+  const layout = useQuery(getTodayLayout, []) ?? DEFAULT_TODAY_LAYOUT;
   if (!entries) return <View style={{ width }} />;
 
   const t = totalsOf(entries);
@@ -181,13 +185,15 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
 
   return (
     <ScrollView style={{ width }} contentContainerStyle={[styles.page, { paddingBottom: bottomInset }]}>
-      <Hero entries={entries} goal={goal} day={day} today={today} />
+      <Hero entries={entries} goal={goal} day={day} today={today} layout={layout} />
 
-      <View style={styles.tiles}>
-        <Tile label="Protein" value={t.protein} unit={`/ ${goal.protein} g`} progress={t.protein / goal.protein} />
-        <Tile label="Carbs" value={t.carbs} unit="g" />
-        <Tile label="Fat" value={t.fat} unit="g" />
-      </View>
+      {layout.macros && (
+        <View style={styles.tiles}>
+          <Tile label="Protein" value={t.protein} unit={`/ ${goal.protein} g`} progress={t.protein / goal.protein} />
+          <Tile label="Carbs" value={t.carbs} unit="g" />
+          <Tile label="Fat" value={t.fat} unit="g" />
+        </View>
+      )}
 
       {entries.length === 0 ? (
         <Animated.View entering={FadeIn} style={[styles.card, styles.empty]}>
@@ -205,18 +211,18 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
         </View>
       )}
 
-      <Sparkline
+      {layout.trend && <Sparkline
         values={trend}
         labels={labels}
         goal={goal.kcal}
         title="Daily average · last 7 days"
         headline={thisWeek === null ? null : Math.round(thisWeek)}
         detail={delta === null ? 'kcal' : `kcal · ${delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(delta))} vs week before`}
-      />
+      />}
 
-      <WeightCard day={day} today={today} />
+      {layout.weight && <WeightCard day={day} today={today} />}
 
-      <Heatmap stats={stats} today={today} selected={day} weeks={HEATMAP_WEEKS} onSelect={onSelectDay} />
+      {layout.heatmap && <Heatmap stats={stats} today={today} selected={day} weeks={HEATMAP_WEEKS} onSelect={onSelectDay} />}
     </ScrollView>
   );
 }

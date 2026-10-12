@@ -15,6 +15,7 @@ import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
 import { HealthSection } from '@/ui/health-section';
 import { ReminderSection } from '@/ui/reminder-section';
+import { TodayLayoutSection } from '@/ui/today-layout-section';
 import { color, radius, space, type } from '@/ui/theme';
 
 function Row({ label, detail, onPress, danger }: { label: string; detail?: string; onPress: () => void; danger?: boolean }) {
@@ -78,6 +79,9 @@ export default function Settings() {
 
       <Text style={[type.label, styles.section]}>Daily goal</Text>
       <View style={[styles.card, { paddingVertical: space.lg }]}>{shownGoal && <GoalPicker goal={shownGoal} onChange={changeGoal} />}</View>
+
+      <Text style={[type.label, styles.section]}>Today screen</Text>
+      <TodayLayoutSection />
 
       <Text style={[type.label, styles.section]}>Reminder</Text>
       <ReminderSection />

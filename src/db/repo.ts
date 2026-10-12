@@ -4,6 +4,7 @@ import { dayKeyOf, type DayKey } from '@/domain/day';
 import { signatureOf, type Entry, type Goal, type Nutrition, type Relog } from '@/domain/entry';
 import type { Unit } from '@/domain/food';
 import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
+import { DEFAULT_TODAY_LAYOUT, type TodayLayout } from '@/domain/today-layout';
 import { defaultWeightUnit, type WeighIn, type WeightUnit } from '@/domain/weight';
 import { getLocales } from 'expo-localization';
 import type { DayStat } from '@/domain/stats';
@@ -211,6 +212,17 @@ export async function getWeightUnit(db: SQLiteDatabase): Promise<WeightUnit> {
 
 export async function setWeightUnit(db: SQLiteDatabase, unit: WeightUnit): Promise<void> {
   await putSetting(db, 'weightUnit', unit);
+  notifyChanged();
+}
+
+export async function getTodayLayout(db: SQLiteDatabase): Promise<TodayLayout> {
+  const raw = await getSetting(db, 'todayLayout');
+  // Merge so sections added in later versions default to on.
+  return { ...DEFAULT_TODAY_LAYOUT, ...(raw ? (JSON.parse(raw) as Partial<TodayLayout>) : {}) };
+}
+
+export async function setTodayLayout(db: SQLiteDatabase, layout: TodayLayout): Promise<void> {
+  await putSetting(db, 'todayLayout', JSON.stringify(layout));
   notifyChanged();
 }
 
