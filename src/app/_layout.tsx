@@ -47,6 +47,7 @@ export default function RootLayout() {
             <Stack.Screen name="food" options={{ presentation: 'modal' }} />
             <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
             <Stack.Screen name="weigh-in" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />
           </Stack>
           {intro && <Intro onDone={() => setIntro(false)} />}
           </AccentProvider>

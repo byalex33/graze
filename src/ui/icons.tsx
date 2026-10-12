@@ -158,3 +158,12 @@ export function CheckIcon({ size = 20, tint = color.text }: IconProps) {
     </Svg>
   );
 }
+
+export function CalendarIcon({ size = 22, tint = color.muted }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM4 10h16M8.5 3v4M15.5 3v4" {...stroke(tint)} />
+      <Circle cx={12} cy={15} r={1.2} fill={tint} />
+    </Svg>
+  );
+}

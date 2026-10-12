@@ -15,7 +15,8 @@ import { AccentToast } from '@/ui/accent-toast';
 import { Celebration } from '@/ui/celebration';
 import { DayPage, HEATMAP_WEEKS } from '@/ui/day-page';
 import { FabMenu } from '@/ui/fab-menu';
-import { GearIcon } from '@/ui/icons';
+import { clearGoToDay, onGoToDay } from '@/ui/day-nav';
+import { CalendarIcon, GearIcon } from '@/ui/icons';
 import { color, space, type } from '@/ui/theme';
 import { useToday } from '@/ui/use-today';
 
@@ -67,6 +68,19 @@ export default function Today() {
   const days = useMemo(() => Array.from({ length: DAYS_BACK }, (_, i) => addDays(today, -i)), [today]);
   const viewedDay = days[index] ?? today;
 
+  // The calendar sends us to a Day. Jump without animating; it may be months away.
+  useEffect(
+    () =>
+      onGoToDay((day) => {
+        clearGoToDay();
+        const i = daysBetween(day, today);
+        if (i < 0 || i >= DAYS_BACK) return;
+        setIndex(i);
+        requestAnimationFrame(() => list.current?.scrollToIndex({ index: i, animated: false }));
+      }),
+    [today],
+  );
+
   if (goal === null) return <Redirect href="/setup" />;
   if (!goal || !stats) return <View style={styles.screen} />;
 
@@ -95,10 +109,20 @@ export default function Today() {
     <View style={styles.screen}>
       <BlurTargetView ref={blurTarget} style={styles.screen}>
         <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
-          <Pressable disabled={index === 0} onPress={() => jumpTo(today)} hitSlop={12}>
-            <Text style={type.title}>{dayLabel(viewedDay, today)}</Text>
-            <Text style={type.small}>{index === 0 ? longDate(viewedDay) : 'Tap for today'}</Text>
-          </Pressable>
+          <View style={styles.headerLeft}>
+            <Pressable
+              accessibilityLabel="Calendar"
+              hitSlop={10}
+              onPress={() => router.push({ pathname: '/calendar', params: { day: viewedDay } })}
+              style={({ pressed }) => [styles.calendarButton, pressed && { opacity: 0.6 }]}
+            >
+              <CalendarIcon />
+            </Pressable>
+            <Pressable disabled={index === 0} onPress={() => jumpTo(today)} hitSlop={12}>
+              <Text style={type.title}>{dayLabel(viewedDay, today)}</Text>
+              <Text style={type.small}>{index === 0 ? longDate(viewedDay) : 'Tap for today'}</Text>
+            </Pressable>
+          </View>
           <Pressable accessibilityLabel="Settings" hitSlop={12} onPress={() => router.push('/settings')}>
             <GearIcon />
           </Pressable>
@@ -146,6 +170,15 @@ export default function Today() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  calendarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: color.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
