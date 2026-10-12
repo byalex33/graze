@@ -31,8 +31,9 @@ OUT="dist/graze-$VERSION.apk"
 "$BUILD_TOOLS/apksigner" sign \
   --ks "$(prop storeFile)" --ks-key-alias "$(prop keyAlias)" \
   --ks-pass "pass:$(prop storePassword)" --key-pass "pass:$(prop keyPassword)" \
+  --v4-signing-enabled false \
   --out "$OUT" "$ALIGNED"
 mv "$ALIGNED" "$(mktemp -d)/" # keep dist/ to the one file people download
 
-"$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | grep -E "Signer #1 certificate (DN|SHA-256)"
+"$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | grep -E "certificate (DN|SHA-256)"
 echo "Built $OUT"

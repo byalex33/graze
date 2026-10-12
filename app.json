@@ -11,7 +11,8 @@
     "ios": {
       "bundleIdentifier": "codes.alex.graze",
       "icon": "./assets/expo.icon",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "appleTeamId": "32FQN938UA"
     },
     "android": {
       "package": "codes.alex.graze",
@@ -43,7 +44,20 @@
           "NSHealthShareUsageDescription": "Graze reads your active and resting energy and your weight to show what you burned.",
           "NSHealthUpdateUsageDescription": "Graze saves what you log and your weigh-ins to Apple Health."
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": [
+              "arm64-v8a"
+            ],
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/with-scene-lifecycle"
     ],
     "experiments": {
       "typedRoutes": true,

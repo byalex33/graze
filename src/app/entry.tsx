@@ -4,6 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -77,11 +78,17 @@ export default function EntryScreen() {
 
   const favs = useQuery(favourites, []);
 
+  // Android keeps the keyboard up over the previous screen unless it's dismissed first.
+  const close = () => {
+    Keyboard.dismiss();
+    router.back();
+  };
+
   useEffect(() => {
     if (!editingId) return;
     (async () => {
       const e = await getEntry(db, editingId);
-      if (!e) return router.back();
+      if (!e) return close();
       setName(e.name ?? '');
       setKcal(asText(e.kcal));
       setProtein(asText(e.protein));
@@ -121,13 +128,13 @@ export default function EntryScreen() {
     }
     if (trimmedName) await setFavourite(db, { ...nutrition, name: trimmedName, foodId: null }, starred);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    close();
   };
 
   const relogFavourite = async (f: Relog) => {
     await addEntry(db, { ...f, day, eatenAt: eatenAtFor(day).getTime() });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    close();
   };
 
   const confirmDelete = () =>
@@ -138,7 +145,7 @@ export default function EntryScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteEntry(db, editingId!);
-          router.back();
+          close();
         },
       },
     ]);
@@ -149,7 +156,7 @@ export default function EntryScreen() {
       style={[styles.screen, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}
     >
       <View style={styles.header}>
-        <Pressable hitSlop={12} onPress={() => router.back()}>
+        <Pressable hitSlop={12} onPress={close}>
           <Text style={[type.body, { color: color.muted }]}>Cancel</Text>
         </Pressable>
         <View style={{ alignItems: 'center' }}>
