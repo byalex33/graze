@@ -14,26 +14,28 @@ So I built Graze for me and a mate. It's free, there's no account, and it never 
 
 ## What it does
 
-- Log food as a number ("520 kcal, 40 g protein"), with or without a name
+- Scan a barcode, or search UK products and plain foods, and pick how much you had: servings, grams, or ml for drinks
+- Or just type a number ("520 kcal, 40 g protein"), with or without a name
 - Re-log things in two taps. The + button shows your usual stuff for this time of day
 - Star anything you have a lot and it's always one tap away
 - Calories and protein against a daily goal you set. Carbs and fat are tracked too, without targets
-- Swipe back through previous days and fix anything you forgot
+- Swipe back through previous days, see the last fortnight as a sparkline and the last 20 weeks as a grid
+- One optional reminder, off by default, that only goes off if you haven't logged anything that day
 - Export everything to CSV whenever you like
 
 ## What it won't do
 
 - Send notifications you didn't ask for. There's one optional reminder, it's off by default, and it stays quiet if you've already logged something that day
-- Streaks, badges, scores, or "great job!"
+- Streaks, badges or scores. You get one burst of strawberry confetti for your first log of the day, and that's the only cheering it does
 - Turn red when you go over. It says "250 over" and that's it
 - Make you sign up for anything
-- Send your data anywhere. It lives on your phone
+- Send your data anywhere. It lives on your phone. The only things that leave it are barcodes and search terms, sent to Open Food Facts to look up products
 
 ## Install
 
 ### Android
 
-1. Download `graze-x.y.z.apk` from the [latest release](../../releases/latest) on your phone
+1. Download `graze-x.y.z.apk` from [Releases](../../releases) on your phone (the first one is on its way)
 2. Open it. Android will ask you to allow installs from your browser; allow it
 3. If Play Protect says it doesn't recognise the app, tap **More details → Install anyway**. It warns about anything that isn't from the Play Store
 
@@ -54,14 +56,21 @@ You'll need Xcode, Developer Mode turned on on the phone, and your Apple ID adde
 ## Roadmap
 
 - [x] Quick Add, Recents, Favourites, daily goal, day history, CSV export
-- [ ] Barcode scanning and food search (Open Food Facts and USDA, both free)
+- [x] Barcode scanning and food search
+- [x] The one optional reminder
 - [ ] Apple Health and Health Connect: calories burned, weight, and saving what you log
-- [ ] Trends: weekly averages, weight trend, a year of logged days
-- [ ] The one optional reminder
+- [ ] Weight trend
+
+## Where the food data comes from
+
+- **Products and barcodes:** [Open Food Facts](https://world.openfoodfacts.org), the free, crowd-sourced food database ([ODbL](https://opendatacommons.org/licenses/odbl/1-0/)). Some products are missing or have gaps; you can always Quick Add instead.
+- **Plain foods** (banana, chicken breast, semi-skimmed milk): McCance and Widdowson's *Composition of Foods Integrated Dataset* 2021, Public Health England, under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). It's bundled in the app, so it works offline. Rebuild it with `scripts/build-cofid.py`.
 
 ## Development
 
-Built with [Expo](https://expo.dev) and SQLite. Everything runs on the device; there's no server.
+Built with [Expo](https://expo.dev) (SDK 57) and SQLite. Everything runs on the device; there's no server.
+
+Two config plugins in `plugins/` deserve a mention: one moves the iOS app to the UIScene life cycle, which iOS 27 requires and Expo SDK 57's template doesn't do yet; the other drops the push-notification entitlement, which free Apple accounts can't sign and which the local-only reminder doesn't need.
 
 ```bash
 npm install
