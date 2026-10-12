@@ -12,6 +12,8 @@ import { color, radius, space, type } from './theme';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const HEIGHT = 96;
 const PAD_Y = 10;
+/** Room for the end dots, which would otherwise be cut in half at the edges. */
+const PAD_X = 6;
 
 interface Point { x: number; y: number; i: number }
 
@@ -72,9 +74,11 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
   const max = goal === undefined ? hi + pad : hi * 1.08;
   const min = goal === undefined ? lo - pad : lo * 0.75;
   const yOf = (v: number) => PAD_Y + (1 - (v - min) / (max - min || 1)) * (HEIGHT - PAD_Y * 2);
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
-  const points = values.map((v, i) => (v === null ? null : { x: i * step, y: yOf(v), i }));
+  const step = values.length > 1 ? (width - PAD_X * 2) / (values.length - 1) : 0;
+  const points = values.map((v, i) => (v === null ? null : { x: PAD_X + i * step, y: yOf(v), i }));
   const { line, area, length } = buildPaths(points, HEIGHT);
+  // The newest point always gets a dot, so a single reading still shows.
+  const lastIndex = values.reduce<number>((last, v, i) => (v === null ? last : i), -1);
   const signature = values.join(',') + width;
 
   useEffect(() => {
@@ -95,12 +99,12 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
   const scrub = Gesture.Pan()
     .activateAfterLongPress(140)
     .onStart((e) => {
-      const i = Math.min(count - 1, Math.max(0, Math.round(e.x / (step || 1))));
+      const i = Math.min(count - 1, Math.max(0, Math.round((e.x - PAD_X) / (step || 1))));
       scrubIndex.value = i;
       scheduleOnRN(select, i);
     })
     .onUpdate((e) => {
-      const i = Math.min(count - 1, Math.max(0, Math.round(e.x / (step || 1))));
+      const i = Math.min(count - 1, Math.max(0, Math.round((e.x - PAD_X) / (step || 1))));
       if (i !== scrubIndex.value) {
         scrubIndex.value = i;
         scheduleOnRN(select, i);
@@ -149,12 +153,15 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
                 strokeDasharray={`${length} ${length}`}
                 animatedProps={lineProps}
               />
-              {points.map((p) => p && values.length <= 31 && showDots && (
-                <Circle key={p.i} cx={p.x} cy={p.y} r={p.i === values.length - 1 ? 3.5 : 1.5} fill={color.text} />
-              ))}
+              {points.map((p) => {
+                if (!p) return null;
+                const latest = p.i === lastIndex;
+                if (!latest && !(showDots && values.length <= 31)) return null;
+                return <Circle key={p.i} cx={p.x} cy={p.y} r={latest ? 3.5 : 1.5} fill={color.text} />;
+              })}
               {active !== null && (
                 <>
-                  <Line x1={active * step} x2={active * step} y1={0} y2={HEIGHT} stroke={color.faint} strokeWidth={1} />
+                  <Line x1={PAD_X + active * step} x2={PAD_X + active * step} y1={0} y2={HEIGHT} stroke={color.faint} strokeWidth={1} />
                   {activePoint && <Circle cx={activePoint.x} cy={activePoint.y} r={5} fill={color.bg} stroke={color.text} strokeWidth={2} />}
                 </>
               )}

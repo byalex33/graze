@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
@@ -59,7 +59,7 @@ export default function WeighInScreen() {
   };
 
   return (
-    <View style={[styles.screen, { paddingBottom: insets.bottom + space.lg }]}>
+    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? insets.top : 0, paddingBottom: insets.bottom + space.lg }]}>
       <View style={styles.header}>
         <Pressable hitSlop={12} onPress={() => router.back()}>
           <Text style={[type.body, { color: color.muted }]}>Cancel</Text>

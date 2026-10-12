@@ -1,16 +1,17 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
 import { addEntry, getUnitOverride, isFavourite, setFavourite, setUnitOverride } from '@/db/repo';
 import { dayKeyOf, dayLabel, eatenAtFor, type DayKey } from '@/domain/day';
 import { formatNumber } from '@/domain/entry';
-import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, withUnit, type Portion, type Unit } from '@/domain/food';
-import { foodById } from '@/food/registry';
+import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, withUnit, type Food, type Portion, type Unit } from '@/domain/food';
+import { lookupBarcode } from '@/food/open-food-facts';
+import { foodById, rememberFood } from '@/food/registry';
 import { StarIcon } from '@/ui/icons';
 import { RollingNumber } from '@/ui/rolling-number';
 import { color, family, radius, space, type } from '@/ui/theme';
@@ -38,7 +39,24 @@ export default function FoodScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; day?: DayKey }>();
   const day = params.day ?? dayKeyOf(new Date());
-  const found = foodById(params.id);
+  // Search results lack serving and pack sizes; the full product record has them.
+  const [fresh, setFresh] = useState<Food | null>(null);
+  useEffect(() => {
+    if (!params.id.startsWith('off:')) return;
+    let cancelled = false;
+    lookupBarcode(params.id.slice(4))
+      .then((full) => {
+        if (full && !cancelled) {
+          rememberFood(full);
+          setFresh(full);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
+  const found = fresh ?? foodById(params.id);
   const savedUnit = useQuery((d) => getUnitOverride(d, params.id), [params.id]);
   const [chosenUnit, setChosenUnit] = useState<Unit | null>(null);
   const unit = chosenUnit ?? savedUnit ?? found?.unit;
@@ -63,7 +81,6 @@ export default function FoodScreen() {
   }
 
   const n = nutritionFor(food, portion);
-  const serving = food.servings[0];
 
   const log = async () => {
     Keyboard.dismiss();
@@ -90,7 +107,7 @@ export default function FoodScreen() {
   };
 
   return (
-    <View style={[styles.screen, { paddingBottom: insets.bottom + space.lg }]}>
+    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? insets.top : 0, paddingBottom: insets.bottom + space.lg }]}>
       <View style={styles.header}>
         <Pressable hitSlop={12} onPress={() => router.back()}>
           <Text style={[type.body, { color: color.muted }]}>Back</Text>
@@ -101,7 +118,9 @@ export default function FoodScreen() {
           accessibilityLabel={isStarred ? 'Remove from favourites' : 'Add to favourites'}
           onPress={() => {
             Haptics.selectionAsync();
-            setStarred(!isStarred);
+            const next = !isStarred;
+            setStarred(next);
+            setFavourite(db, { ...n, name: entryName(food), foodId: food.id, portion: portionLabel(food, portion) }, next);
           }}
         >
           <StarIcon filled={isStarred} />
@@ -133,22 +152,25 @@ export default function FoodScreen() {
           <Macro label="Fat" value={n.fat} />
         </View>
 
-        {serving && (
+        {food.servings.length > 0 && (
           <View style={styles.segmented}>
-            {(['serving', 'amount'] as const).map((kind) => (
-              <Pressable
-                key={kind}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setPortion(kind === 'serving' ? { kind, serving, count: 1 } : { kind, amount: Number(shownAmount) || QUICK_AMOUNTS[food.unit][1] });
-                }}
-                style={[styles.segment, portion.kind === kind && styles.segmentOn]}
-              >
-                <Text style={[type.bodyStrong, { color: portion.kind === kind ? color.bg : color.muted }]}>
-                  {kind === 'serving' ? serving.label : food.unit}
-                </Text>
-              </Pressable>
-            ))}
+            {[...food.servings.map((sv) => ({ key: sv.label, serving: sv })), { key: food.unit, serving: null }].map(({ key, serving: sv }) => {
+              const on = sv ? portion.kind === 'serving' && portion.serving.label === sv.label : portion.kind === 'amount';
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setPortion(sv ? { kind: 'serving', serving: sv, count: 1 } : { kind: 'amount', amount: Number(shownAmount) || QUICK_AMOUNTS[food.unit][1] });
+                  }}
+                  style={[styles.segment, on && styles.segmentOn]}
+                >
+                  <Text numberOfLines={1} style={[type.bodyStrong, { color: on ? color.bg : color.muted }]}>
+                    {key}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 

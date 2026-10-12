@@ -1,11 +1,25 @@
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { startOfDay, type DayKey } from '@/domain/day';
 import { heatLevel, heatmapWeeks, type DayStat } from '@/domain/stats';
 import { color, heat, radius, space, type } from './theme';
+
+/**
+ * One week's column, fading in after `delay`. Its own animation rather than a Reanimated
+ * entering animation, which on Android can stay invisible if it mounts behind another screen.
+ */
+function WeekColumn({ delay, children }: { delay: number; children: ReactNode }) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withTiming(1, { duration: 260 }));
+  }, [delay, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return <Animated.View style={[{ gap: GAP }, style]}>{children}</Animated.View>;
+}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const GAP = 3;
@@ -53,7 +67,7 @@ export function Heatmap({ stats, today, selected, weeks, onSelect }: HeatmapProp
             </View>
             <View style={styles.grid}>
               {grid.map((week, w) => (
-                <Animated.View key={w} entering={FadeIn.delay(w * 22).duration(260)} style={{ gap: GAP }}>
+                <WeekColumn key={w} delay={w * 22}>
                   {week.map((day, d) => {
                     if (!day) return <View key={d} style={{ width: cell, height: cell }} />;
                     const level = heatLevel(entriesByDay.get(day) ?? 0);
@@ -73,7 +87,7 @@ export function Heatmap({ stats, today, selected, weeks, onSelect }: HeatmapProp
                       />
                     );
                   })}
-                </Animated.View>
+                </WeekColumn>
               ))}
             </View>
           </>

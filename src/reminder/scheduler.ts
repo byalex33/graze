@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { entriesForDay, getReminder } from '@/db/repo';
@@ -6,7 +7,15 @@ import { dayKeyOf } from '@/domain/day';
 import { reminderTimes } from '@/domain/reminder';
 
 const ID_PREFIX = 'graze-reminder-';
+const CHANNEL = 'daily-reminder';
 const CONTENT = { title: 'Graze', body: 'Nothing logged today.' };
+
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync(CHANNEL, {
+    name: 'Daily reminder',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  }).catch(() => {});
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
@@ -41,7 +50,7 @@ export async function syncReminders(db: SQLiteDatabase): Promise<void> {
       Notifications.scheduleNotificationAsync({
         identifier: `${ID_PREFIX}${dayKeyOf(date)}`,
         content: CONTENT,
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL },
       }),
     ),
   );
@@ -51,6 +60,6 @@ export async function syncReminders(db: SQLiteDatabase): Promise<void> {
 export async function sendTestReminder(): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: CONTENT,
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5 },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL },
   });
 }

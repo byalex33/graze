@@ -1,4 +1,4 @@
-import { defaultPortion, foodFromOff, nutritionFor, portionLabel, soundsLikeDrink, type Food } from '../food';
+import { defaultPortion, foodFromOff, nutritionFor, packFromQuantity, portionLabel, soundsLikeDrink, type Food } from '../food';
 import { reminderTimes } from '../reminder';
 
 const bar: Food = {
@@ -59,7 +59,7 @@ describe('foodFromOff', () => {
     const food = foodFromOff({ code: '1', product_name: 'Cola', quantity: '330 ml', nutriments: { energy_100g: 180 } });
     expect(food?.per100.kcal).toBe(43);
     expect(food?.unit).toBe('ml');
-    expect(food?.servings).toEqual([]);
+    expect(food?.servings).toEqual([{ label: 'Whole pack', amount: 330 }]);
   });
 
   it('calls a bare weight serving "1 serving"', () => {
@@ -83,6 +83,12 @@ describe('foodFromOff', () => {
       expect(coke?.unit).toBe('ml');
       expect(coke?.servings).toEqual([{ label: 'Whole pack', amount: 330 }]);
       expect(defaultPortion(coke!)).toEqual({ kind: 'serving', serving: { label: 'Whole pack', amount: 330 }, count: 1 });
+    });
+
+    it('starts a can at the whole can even when the listed serving is 100 ml', () => {
+      const can = foodFromOff({ code: '1', product_name: 'Coca cola zero', quantity: '330 ml', serving_size: '100 ml', serving_quantity: 100, nutriments: { 'energy-kcal_100g': 0.2 } });
+      expect(can?.servings).toEqual([{ label: '1 serving', amount: 100 }, { label: 'Whole pack', amount: 330 }]);
+      expect(defaultPortion(can!)).toEqual({ kind: 'serving', serving: { label: 'Whole pack', amount: 330 }, count: 1 });
     });
 
     it('spots milk from its serving unit alone', () => {
@@ -113,9 +119,11 @@ describe('foodFromOff', () => {
       expect(foodFromOff({ code: '1', product_name: 'Squash', categories_tags: ['en:beverages'], nutriments: { 'energy-kcal_100g': 10 } })?.unit).toBe('ml');
     });
 
-    it('offers both a serving and the whole bottle when they differ, and defaults to 250 ml without either', () => {
+    it('offers both a serving and the whole bottle when they differ, but not big sharing sizes', () => {
+      const bottle = foodFromOff({ code: '3', product_name: 'Smoothie', quantity: '500 ml', product_quantity: 500, product_quantity_unit: 'ml', serving_size: '250 ml', serving_quantity: 250, nutriments: { 'energy-kcal_100g': 60 } });
+      expect(bottle?.servings).toEqual([{ label: '1 serving', amount: 250 }, { label: 'Whole pack', amount: 500 }]);
       const juice = foodFromOff({ code: '1', product_name: 'Orange juice', quantity: '1 l', product_quantity: 1000, product_quantity_unit: 'ml', serving_size: '150 ml', serving_quantity: 150, nutriments: { 'energy-kcal_100g': 45 } });
-      expect(juice?.servings).toEqual([{ label: '1 serving', amount: 150 }, { label: 'Whole pack', amount: 1000 }]);
+      expect(juice?.servings).toEqual([{ label: '1 serving', amount: 150 }]);
       const plain = foodFromOff({ code: '2', product_name: 'Water', quantity: '1.5 l', nutriments: { 'energy-kcal_100g': 0 } });
       expect(defaultPortion(plain!)).toEqual({ kind: 'amount', amount: 250 });
     });
@@ -132,6 +140,27 @@ describe('foodFromOff', () => {
   it('rejects products with no name or no calories', () => {
     expect(foodFromOff({ code: '1', product_name: '', nutriments: { 'energy-kcal_100g': 1 } })).toBeNull();
     expect(foodFromOff({ code: '1', product_name: 'Mystery', nutriments: {} })).toBeNull();
+  });
+});
+
+describe('packFromQuantity', () => {
+  it('reads common UK pack sizes', () => {
+    expect(packFromQuantity('330 ml')).toBe(330);
+    expect(packFromQuantity('1.5 l')).toBe(1500);
+    expect(packFromQuantity('7 x 250 ml')).toBe(250);
+    expect(packFromQuantity('45g')).toBe(45);
+    expect(packFromQuantity('1 kg')).toBe(1000);
+  });
+
+  it("gives up on things it can't read", () => {
+    expect(packFromQuantity('2')).toBeNull();
+    expect(packFromQuantity('6 rolls')).toBeNull();
+    expect(packFromQuantity(undefined)).toBeNull();
+  });
+
+  it('gives a searched can of Coke (no structured sizes) a whole-pack portion', () => {
+    const coke = foodFromOff({ code: '5000112592054', product_name: 'Coca cola zero', quantity: '330 ml', nutriments: { 'energy-kcal_100g': 0.2 } });
+    expect(coke?.servings).toEqual([{ label: 'Whole pack', amount: 330 }]);
   });
 });
 

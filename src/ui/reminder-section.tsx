@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -42,13 +43,20 @@ export function ReminderSection() {
 
   return (
     <View style={styles.card}>
-      <View style={styles.row}>
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync();
+          toggle(!reminder.enabled);
+        }}
+        accessible={false}
+        style={styles.row}
+      >
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={type.body}>Daily reminder</Text>
           <Text style={type.small}>Only if you haven&apos;t logged anything that day</Text>
         </View>
         <Toggle value={reminder.enabled} onValueChange={toggle} label="Daily reminder" />
-      </View>
+      </Pressable>
 
       {denied && (
         <Pressable onPress={() => Linking.openSettings()} style={styles.row}>

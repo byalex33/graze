@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { useQuery } from '@/db/changes';
 import { deleteEntry, entriesForDay, getTodayLayout, getWeightUnit } from '@/db/repo';
@@ -35,9 +34,7 @@ function BurnedLine({ day, today, eaten }: { day: DayKey; today: DayKey; eaten: 
   else if (burned.resting === null) text = `${formatNumber(burned.active)} active burned`;
   else text = `${formatNumber(total)} burned · Net ${net < 0 ? '−' : '+'}${formatNumber(Math.abs(net))}`;
   return (
-    <Animated.Text entering={FadeIn} style={[type.small, styles.burned]}>
-      {text}
-    </Animated.Text>
+    <Text style={[type.small, styles.burned]}>{text}</Text>
   );
 }
 
@@ -196,17 +193,19 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
       )}
 
       {entries.length === 0 ? (
-        <Animated.View entering={FadeIn} style={[styles.card, styles.empty]}>
+        <View style={[styles.card, styles.empty]}>
           <Text style={type.bodyStrong}>Nothing logged</Text>
           <Text style={type.label}>Tap + to add something.</Text>
-        </Animated.View>
+        </View>
       ) : (
         <View style={[styles.card, styles.list]}>
           {entries.map((e, i) => (
-            <Animated.View key={e.id} entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)} layout={LinearTransition}>
+            // No layout animations here: on Android they can leave rows invisible when this
+            // page re-renders behind another screen.
+            <View key={e.id}>
               {i > 0 && <View style={styles.divider} />}
               <EntryRow entry={e} />
-            </Animated.View>
+            </View>
           ))}
         </View>
       )}

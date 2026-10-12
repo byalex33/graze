@@ -53,10 +53,23 @@ export function portionLabel(food: Food, p: Portion): string {
 /** Quick amounts offered when weighing or measuring. */
 export const QUICK_AMOUNTS: Record<Unit, number[]> = { g: [50, 100, 150, 200, 250], ml: [150, 250, 330, 500] };
 
+/** A drink starts at the whole can or bottle when there is one; anything else at its first Serving. */
 export function defaultPortion(food: Food): Portion {
-  return food.servings.length > 0
-    ? { kind: 'serving', serving: food.servings[0], count: 1 }
-    : { kind: 'amount', amount: food.unit === 'ml' ? 250 : 100 };
+  const wholeDrink = food.unit === 'ml' ? food.servings.find((s) => s.label === 'Whole pack') : undefined;
+  const serving = wholeDrink ?? food.servings[0];
+  return serving ? { kind: 'serving', serving, count: 1 } : { kind: 'amount', amount: food.unit === 'ml' ? 250 : 100 };
+}
+
+/**
+ * One pack's size from Open Food Facts' free-text quantity: "330 ml" → 330, "1.5 l" → 1500,
+ * "7 x 250 ml" → 250 (one can of the multipack). Null when it can't tell.
+ */
+export function packFromQuantity(quantity: string | undefined): number | null {
+  const m = (quantity ?? '').trim().match(/^(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(g|kg|ml|cl|l)$/i);
+  if (!m) return null;
+  const value = Number(m[2].replace(',', '.'));
+  const scale = { g: 1, kg: 1000, ml: 1, cl: 10, l: 1000 }[m[3].toLowerCase() as 'g' | 'kg' | 'ml' | 'cl' | 'l'];
+  return value > 0 ? Math.round(value * scale * 10) / 10 : null;
 }
 
 /** The name an Entry gets: brand first, unless the product name already includes it. */
@@ -133,7 +146,7 @@ export function foodFromOff(p: OffProduct): Food | null {
 
   const unit: Unit = isDrink(p, name) ? 'ml' : 'g';
   const servingAmount = num(p.serving_quantity);
-  const packAmount = num(p.product_quantity);
+  const packAmount = num(p.product_quantity) ?? packFromQuantity(p.quantity);
   const servingLabel = (p.serving_size ?? '').replace(/\s*\(.*\)\s*$/, '').trim();
   const generic = !servingLabel || /^(1\s+)?(portion|serving)$/i.test(servingLabel) || /^\d+([.,]\d+)?\s*(g|grams?|ml|cl|l)$/i.test(servingLabel);
   const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(a, b) * 0.05;
@@ -143,8 +156,8 @@ export function foodFromOff(p: OffProduct): Food | null {
     const isWholePack = packAmount !== null && near(servingAmount, packAmount);
     servings.push({ label: isWholePack && generic ? 'Whole pack' : generic ? '1 serving' : servingLabel, amount: servingAmount });
   }
-  // A whole can or bottle is a natural portion; a whole 1 kg bag of pasta isn't.
-  const packIsPortion = packAmount !== null && packAmount > 0 && packAmount <= (unit === 'ml' ? 3000 : 250);
+  // A whole can, bottle or snack bag is a natural portion; a 1.5 l bottle or a 1 kg bag of pasta isn't.
+  const packIsPortion = packAmount !== null && packAmount > 0 && packAmount <= (unit === 'ml' ? 750 : 250);
   if (packIsPortion && !servings.some((s) => near(s.amount, packAmount))) {
     servings.push({ label: 'Whole pack', amount: packAmount });
   }

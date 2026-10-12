@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Fragment, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/changes';
 import { getTodayLayout, setTodayLayout } from '@/db/repo';
@@ -27,13 +28,20 @@ export function TodayLayoutSection() {
       {TODAY_SECTIONS.map((s, i) => (
         <Fragment key={s.key}>
           {i > 0 && <View style={styles.divider} />}
-          <View style={styles.row}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              toggle(s.key, !layout[s.key]);
+            }}
+            accessible={false}
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: color.cardRaised }]}
+          >
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={type.body}>{s.label}</Text>
               <Text style={type.small}>{s.detail}</Text>
             </View>
             <Toggle value={layout[s.key]} onValueChange={(on) => toggle(s.key, on)} label={s.label} />
-          </View>
+          </Pressable>
         </Fragment>
       ))}
     </View>

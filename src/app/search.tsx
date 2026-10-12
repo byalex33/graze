@@ -2,8 +2,9 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
 import { addEntry, entriesSince, favourites } from '@/db/repo';
@@ -28,6 +29,7 @@ type Row =
 /** Search UK generic foods and Open Food Facts. Before typing, shows Favourites and Recents. */
 export default function Search() {
   const db = useSQLiteContext();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ day?: DayKey }>();
   const day = params.day ?? dayKeyOf(new Date());
   const [query, setQuery] = useState('');
@@ -95,7 +97,7 @@ export default function Search() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
       <View style={styles.header}>
         <View style={styles.field}>
           <SearchIcon tint={color.muted} size={18} />
