@@ -116,6 +116,10 @@ export function Intro({ onDone }: { onDone: () => void }) {
   const reduceMotion = useReducedMotion();
   const [flights] = useState(() => plan(width, height));
 
+  // Once the circle starts opening the intro must never catch a touch, and it must go
+  // away even if the animation's own "finished" callback never arrives.
+  const [revealing, setRevealing] = useState(false);
+
   const grow = useSharedValue(1);
   const gulp = useSharedValue(0);
   const wiggle = useSharedValue(0);
@@ -147,23 +151,31 @@ export function Intro({ onDone }: { onDone: () => void }) {
   };
 
   useEffect(() => {
+    const backstop = setTimeout(onDone, (reduceMotion ? 550 : REVEAL_AT + REVEAL_MS) + 500);
     if (reduceMotion) {
       fade.set(withDelay(250, withTiming(0, { duration: 300 }, (done) => done && scheduleOnRN(onDone))));
-      return;
+      return () => clearTimeout(backstop);
     }
+    const lettingGo = setTimeout(() => setRevealing(true), REVEAL_AT);
     glow.set(withDelay(WORD_AT - 200, withTiming(1, { duration: 600 })));
     word.set(withDelay(WORD_AT, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) })));
     const t = setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), WORD_AT + 150);
     startReveal(REVEAL_AT);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(lettingGo);
+      clearTimeout(backstop);
+    };
     // Runs once; the shared values are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
   const skip = () => {
-    if (reveal.get() > 0 || reduceMotion) return;
+    if (revealing || reduceMotion) return;
+    setRevealing(true);
     word.set(withTiming(1, { duration: 150 }));
     startReveal(0);
+    setTimeout(onDone, REVEAL_MS + 500);
   };
 
   const berry = useAnimatedStyle(() => ({
@@ -193,8 +205,8 @@ export function Intro({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, overlay]} pointerEvents="box-none">
-      <Pressable style={StyleSheet.absoluteFill} onPress={skip} accessibilityLabel="Skip intro">
+    <Animated.View style={[StyleSheet.absoluteFill, overlay]} pointerEvents={revealing ? 'none' : 'auto'}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={skip} disabled={revealing} accessibilityLabel="Skip intro">
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <AnimatedPath animatedProps={holeProps} fill={color.bg} fillRule="evenodd" />
         </Svg>
