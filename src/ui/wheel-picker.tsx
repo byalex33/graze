@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { color, radius } from './theme';
+import { color, family, radius } from './theme';
 
 const ITEM_HEIGHT = 40;
 const VISIBLE = 5;
@@ -111,5 +111,5 @@ const styles = StyleSheet.create({
     backgroundColor: color.cardRaised,
   },
   item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  itemText: { color: color.text, fontSize: 22, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  itemText: { color: color.text, fontSize: 22, fontFamily: family.monoMedium, letterSpacing: -0.6 },
 });

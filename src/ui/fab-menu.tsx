@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -14,7 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatNumber, type Relog } from '@/domain/entry';
-import { PlusIcon } from './icons';
+import { BarcodeIcon, PencilIcon, PlusIcon, SearchIcon } from './icons';
 import { color, radius, space, type } from './theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -25,6 +25,8 @@ interface FabMenuProps {
   recents: readonly Relog[];
   onRelog: (relog: Relog) => void;
   onQuickAdd: () => void;
+  onSearch: () => void;
+  onScan: () => void;
   /** Android only: the view the frosted screen blurs. */
   blurTarget: RefObject<View | null>;
 }
@@ -33,7 +35,7 @@ interface FabMenuProps {
  * The + folds into a ×, and its actions unfold upward over a frosted screen.
  * Recents sit above the actions so re-logging stays two taps.
  */
-export function FabMenu({ recents, onRelog, onQuickAdd, blurTarget }: FabMenuProps) {
+export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, blurTarget }: FabMenuProps) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
@@ -56,7 +58,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, blurTarget }: FabMenuPro
     action();
   };
 
-  const actions: { key: string; label: string; detail?: string; onPress: () => void }[] = [
+  const actions: { key: string; label: string; detail?: string; icon?: ReactNode; onPress: () => void }[] = [
     ...recents.map((r) => ({
       key: r.signature,
       label: r.name,
@@ -66,7 +68,9 @@ export function FabMenu({ recents, onRelog, onQuickAdd, blurTarget }: FabMenuPro
         onRelog(r);
       },
     })),
-    { key: 'quick-add', label: 'Quick Add', onPress: onQuickAdd },
+    { key: 'search', label: 'Search', icon: <SearchIcon size={18} />, onPress: onSearch },
+    { key: 'scan', label: 'Scan barcode', icon: <BarcodeIcon size={18} />, onPress: onScan },
+    { key: 'quick-add', label: 'Quick Add', icon: <PencilIcon size={18} tint={color.bg} />, onPress: onQuickAdd },
   ];
 
   const bottom = insets.bottom + space.lg;
@@ -105,9 +109,11 @@ export function FabMenu({ recents, onRelog, onQuickAdd, blurTarget }: FabMenuPro
                   style={({ pressed }) => [
                     styles.action,
                     a.key === 'quick-add' && styles.primaryAction,
+                    a.key === 'search' && recents.length > 0 && styles.firstTool,
                     pressed && styles.pressed,
                   ]}
                 >
+                  {a.icon}
                   <Text
                     numberOfLines={1}
                     style={[type.bodyStrong, a.key === 'quick-add' && { color: color.bg }, styles.actionLabel]}
@@ -150,7 +156,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: color.hairline,
   },
-  primaryAction: { backgroundColor: color.text, borderColor: color.text, marginTop: space.sm },
+  primaryAction: { backgroundColor: color.text, borderColor: color.text },
+  firstTool: { marginTop: space.md },
   actionLabel: { flexShrink: 1 },
   pressed: { opacity: 0.7 },
   fab: {

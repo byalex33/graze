@@ -1,102 +1,188 @@
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { useQuery } from '@/db/changes';
-import { entriesForDay } from '@/db/repo';
-import { clockTime, type DayKey } from '@/domain/day';
-import { formatNumber, remainingLabel, totalsOf, type Entry, type Goal } from '@/domain/entry';
-import { Rings } from './rings';
-import { color, radius, space, type } from './theme';
+import { deleteEntry, entriesForDay } from '@/db/repo';
+import { addDays, clockTime, dayLabel, startOfDay, type DayKey } from '@/domain/day';
+import { formatNumber, totalsOf, type Entry, type Goal } from '@/domain/entry';
+import { averageLogged, series, type DayStat } from '@/domain/stats';
+import { DayBar } from './day-bar';
+import { Heatmap } from './heatmap';
+import { RollingNumber } from './rolling-number';
+import { Sparkline } from './sparkline';
+import { color, family, radius, space, type } from './theme';
 
-function Summary({ entries, goal }: { entries: readonly Entry[]; goal: Goal }) {
+const TREND_DAYS = 14;
+export const HEATMAP_WEEKS = 20;
+
+function Hero({ entries, goal }: { entries: readonly Entry[]; goal: Goal }) {
   const t = totalsOf(entries);
+  const left = Math.round(goal.kcal - t.kcal);
+  const over = left < 0;
   return (
-    <View style={styles.card}>
-      <View style={styles.summaryRow}>
-        <Rings kcalProgress={t.kcal / goal.kcal} proteinProgress={t.protein / goal.protein} />
-        <View style={styles.summaryNumbers}>
-          <Text style={type.hero}>{formatNumber(t.kcal)}</Text>
-          <Text style={type.label}>
-            of {formatNumber(goal.kcal)} kcal · {remainingLabel(t.kcal, goal.kcal)}
-          </Text>
-          <View style={styles.proteinLine}>
-            <View style={styles.dot} />
-            <Text style={type.number}>{formatNumber(t.protein)}</Text>
-            <Text style={type.label}> / {formatNumber(goal.protein)} g protein</Text>
-          </View>
-        </View>
+    <View style={styles.hero}>
+      <Text style={type.eyebrow}>{over ? 'Over' : 'Left'}</Text>
+      <View style={styles.heroNumber}>
+        <RollingNumber value={Math.abs(left)} style={type.hero} />
+        <Text style={styles.heroUnit}>kcal</Text>
       </View>
-      <View style={styles.macros}>
-        <Text style={type.small}>Carbs {formatNumber(t.carbs)} g</Text>
-        <Text style={type.small}>Fat {formatNumber(t.fat)} g</Text>
+      <Text style={type.small}>
+        {formatNumber(t.kcal)} eaten · {formatNumber(goal.kcal)} goal
+      </Text>
+      <View style={{ marginTop: space.lg }}>
+        <DayBar kcals={entries.map((e) => e.kcal)} goal={goal.kcal} />
       </View>
     </View>
   );
 }
 
-function EntryRow({ entry }: { entry: Entry }) {
+function Tile({ label, value, unit, progress }: { label: string; value: number; unit: string; progress?: number }) {
   return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/entry', params: { id: entry.id } })}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: color.cardRaised }]}
-    >
-      <Text style={[type.small, styles.time]}>{clockTime(entry.eatenAt)}</Text>
-      <Text numberOfLines={1} style={[type.body, styles.name, !entry.name && { color: color.muted }]}>
-        {entry.name || 'Quick Add'}
+    <View style={styles.tile}>
+      <Text style={type.eyebrow}>{label}</Text>
+      <Text style={styles.tileValue}>
+        {formatNumber(value)}
+        <Text style={type.small}> {unit}</Text>
       </Text>
-      <View style={styles.rowNumbers}>
-        <Text style={type.number}>{formatNumber(entry.kcal)}</Text>
-        {entry.protein !== null && <Text style={type.small}>{formatNumber(entry.protein)} g</Text>}
-      </View>
-    </Pressable>
+      {progress !== undefined && (
+        <View style={styles.tileTrack}>
+          <View style={[styles.tileFill, { width: `${Math.min(1, progress) * 100}%` }]} />
+        </View>
+      )}
+    </View>
   );
 }
 
-/** One Day: its totals against the Goal, then its Entries in the order they were eaten. */
-export function DayPage({ day, goal, width, bottomInset }: { day: DayKey; goal: Goal; width: number; bottomInset: number }) {
+function EntryRow({ entry }: { entry: Entry }) {
+  const db = useSQLiteContext();
+  return (
+    <ReanimatedSwipeable
+      friction={1.6}
+      rightThreshold={48}
+      overshootRight={false}
+      renderRightActions={() => (
+        <Pressable
+          accessibilityLabel={`Delete ${entry.name || 'Quick Add'}`}
+          onPress={() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            deleteEntry(db, entry.id);
+          }}
+          style={styles.deleteAction}
+        >
+          <Text style={[type.bodyStrong, { color: color.danger }]}>Delete</Text>
+        </Pressable>
+      )}
+    >
+      <Pressable
+        onPress={() => router.push({ pathname: '/entry', params: { id: entry.id } })}
+        style={({ pressed }) => [styles.row, pressed && { backgroundColor: color.cardRaised }]}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={1} style={[type.bodyStrong, !entry.name && { color: color.muted }]}>
+            {entry.name || 'Quick Add'}
+          </Text>
+          <Text style={type.small}>
+            {clockTime(entry.eatenAt)}
+            {entry.portion ? ` · ${entry.portion}` : ''}
+            {entry.protein !== null ? ` · ${formatNumber(entry.protein)} g protein` : ''}
+          </Text>
+        </View>
+        <Text style={styles.rowKcal}>{formatNumber(entry.kcal)}</Text>
+      </Pressable>
+    </ReanimatedSwipeable>
+  );
+}
+
+const shortDate = (day: DayKey) => {
+  const d = startOfDay(day);
+  return `${d.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]}`;
+};
+
+interface DayPageProps {
+  day: DayKey;
+  today: DayKey;
+  goal: Goal;
+  stats: readonly DayStat[];
+  width: number;
+  bottomInset: number;
+  onSelectDay: (day: DayKey) => void;
+}
+
+/** One Day: what's left, what it was made of, then how it sits in the last few weeks. */
+export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectDay }: DayPageProps) {
   const entries = useQuery((db) => entriesForDay(db, day), [day]);
+  if (!entries) return <View style={{ width }} />;
+
+  const t = totalsOf(entries);
+  const trend = series(stats, day, TREND_DAYS);
+  const thisWeek = averageLogged(trend.slice(-7));
+  const lastWeek = averageLogged(trend.slice(0, 7));
+  const delta = thisWeek !== null && lastWeek !== null ? Math.round(thisWeek - lastWeek) : null;
+  const labels = trend.map((_, i) => {
+    const d = addDays(day, i - TREND_DAYS + 1);
+    const label = dayLabel(d, today);
+    return label === 'Today' || label === 'Yesterday' ? label : shortDate(d);
+  });
 
   return (
     <ScrollView style={{ width }} contentContainerStyle={[styles.page, { paddingBottom: bottomInset }]}>
-      {entries && <Summary entries={entries} goal={goal} />}
-      {entries && entries.length === 0 && (
-        <Animated.Text entering={FadeIn} style={[type.label, styles.empty]}>
-          Nothing logged
-        </Animated.Text>
-      )}
-      {entries && entries.length > 0 && (
+      <Hero entries={entries} goal={goal} />
+
+      <View style={styles.tiles}>
+        <Tile label="Protein" value={t.protein} unit={`/ ${goal.protein} g`} progress={t.protein / goal.protein} />
+        <Tile label="Carbs" value={t.carbs} unit="g" />
+        <Tile label="Fat" value={t.fat} unit="g" />
+      </View>
+
+      {entries.length === 0 ? (
+        <Animated.View entering={FadeIn} style={[styles.card, styles.empty]}>
+          <Text style={type.bodyStrong}>Nothing logged</Text>
+          <Text style={type.label}>Tap + to add something.</Text>
+        </Animated.View>
+      ) : (
         <View style={[styles.card, styles.list]}>
-          {entries.map((e) => (
+          {entries.map((e, i) => (
             <Animated.View key={e.id} entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)} layout={LinearTransition}>
+              {i > 0 && <View style={styles.divider} />}
               <EntryRow entry={e} />
             </Animated.View>
           ))}
         </View>
       )}
+
+      <Sparkline
+        values={trend}
+        labels={labels}
+        goal={goal.kcal}
+        title="Daily average · last 7 days"
+        headline={thisWeek === null ? null : Math.round(thisWeek)}
+        detail={delta === null ? 'kcal' : `kcal · ${delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(delta))} vs week before`}
+      />
+
+      <Heatmap stats={stats} today={today} selected={day} weeks={HEATMAP_WEEKS} onSelect={onSelectDay} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: space.lg, gap: space.md },
-  card: { backgroundColor: color.card, borderRadius: radius.lg, padding: space.lg },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: space.xl },
-  summaryNumbers: { flex: 1, gap: 2 },
-  proteinLine: { flexDirection: 'row', alignItems: 'center', marginTop: space.md },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.muted, marginRight: space.sm },
-  macros: {
-    flexDirection: 'row',
-    gap: space.lg,
-    marginTop: space.lg,
-    paddingTop: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hairline,
-  },
-  list: { paddingVertical: space.xs, paddingHorizontal: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.md },
-  time: { width: 42 },
-  name: { flex: 1 },
-  rowNumbers: { alignItems: 'flex-end' },
-  empty: { textAlign: 'center', marginTop: space.xxl },
+  hero: { paddingTop: space.md, paddingBottom: space.sm },
+  heroNumber: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, marginVertical: space.xs },
+  heroUnit: { ...type.small, fontSize: 15, marginBottom: 12 },
+  tiles: { flexDirection: 'row', gap: space.sm },
+  tile: { flex: 1, backgroundColor: color.card, borderRadius: radius.md, padding: space.md, gap: 6 },
+  tileValue: { ...type.number, fontSize: 20, letterSpacing: -0.8 },
+  tileTrack: { height: 4, borderRadius: 2, backgroundColor: color.track, overflow: 'hidden', marginTop: 2 },
+  tileFill: { height: 4, borderRadius: 2, backgroundColor: color.text },
+  card: { backgroundColor: color.card, borderRadius: radius.lg },
+  list: { overflow: 'hidden' },
+  empty: { padding: space.xl, alignItems: 'center', gap: space.xs },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: 14, gap: space.md, backgroundColor: color.card },
+  rowKcal: { ...type.number, fontSize: 17, fontFamily: family.monoMedium },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.hairline, marginLeft: space.lg },
+  deleteAction: { width: 96, justifyContent: 'center', alignItems: 'center', backgroundColor: color.cardRaised },
 });

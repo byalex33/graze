@@ -23,12 +23,24 @@ A Day that has ended. Only Completed Days show a Net.
 _Avoid_: Past day, closed day
 
 **Food**:
-A product or generic item from the food database (scanned or searched) that an Entry can be made from.
-_Avoid_: Product, item, ingredient
+Something with known nutrition per 100 g or ml that an Entry can be made from: a Product or a Generic Food.
+_Avoid_: Item, ingredient
+
+**Product**:
+A branded, packaged Food with a barcode, as listed on Open Food Facts.
+_Avoid_: Item, SKU
+
+**Generic Food**:
+An unbranded Food from the UK's official composition tables (McCance and Widdowson's CoFID), e.g. "Banana, flesh only".
+_Avoid_: Basic food, whole food
 
 **Serving**:
-A named portion that a Food defines (e.g. "1 bar", "1 cup"). An Entry's amount is either a number of Servings or a weight/volume in grams or ml.
-_Avoid_: Portion, unit
+A named amount that a Food defines, e.g. "1 bar" = 45 g.
+_Avoid_: Unit, size
+
+**Portion**:
+How much of a Food an Entry records: a number of Servings, or a weight or volume in g or ml.
+_Avoid_: Amount, quantity
 
 **Quick Add**:
 An Entry made by typing calories (and optionally a name and macros) directly, with no Food behind it. A named Quick Add can be Favourited and re-logged like a Food.

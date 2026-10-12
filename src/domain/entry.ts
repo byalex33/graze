@@ -20,6 +20,8 @@ export interface Entry extends Nutrition {
   name: string | null;
   /** Set when the Entry was made from a Food; null for a Quick Add. */
   foodId: string | null;
+  /** How much of the Food, e.g. "1 bar (45 g)" or "150 g". Null for a Quick Add. */
+  portion: string | null;
 }
 
 /** Something that can be re-logged in one tap: a Recent or a Favourite. */
@@ -27,6 +29,7 @@ export interface Relog extends Nutrition {
   signature: string;
   name: string;
   foodId: string | null;
+  portion: string | null;
 }
 
 export interface Goal {

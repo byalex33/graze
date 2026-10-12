@@ -1,0 +1,143 @@
+import type { Nutrition } from './entry';
+
+/** Foods are measured by weight or by volume. */
+export type Unit = 'g' | 'ml';
+
+/** A named portion a Food defines, e.g. "1 bar" = 40 g. */
+export interface Serving {
+  label: string;
+  amount: number;
+}
+
+/** A product (Open Food Facts) or a generic UK food (CoFID). Nutrition is per 100 g or ml. */
+export interface Food {
+  id: string;
+  name: string;
+  brand: string | null;
+  unit: Unit;
+  per100: Nutrition;
+  servings: Serving[];
+}
+
+/** How much of a Food was eaten: a number of Servings, or a weight/volume. */
+export type Portion =
+  | { kind: 'serving'; serving: Serving; count: number }
+  | { kind: 'amount'; amount: number };
+
+export function portionAmount(p: Portion): number {
+  return p.kind === 'serving' ? p.serving.amount * p.count : p.amount;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** The Nutrition of a Portion, which an Entry keeps as its own copy. */
+export function nutritionFor(food: Food, portion: Portion): Nutrition {
+  const f = portionAmount(portion) / 100;
+  const scale = (v: number | null) => (v === null ? null : round1(v * f));
+  return {
+    kcal: Math.round(food.per100.kcal * f),
+    protein: scale(food.per100.protein),
+    carbs: scale(food.per100.carbs),
+    fat: scale(food.per100.fat),
+  };
+}
+
+const trimNumber = (n: number) => String(round1(n));
+
+export function portionLabel(food: Food, p: Portion): string {
+  if (p.kind === 'amount') return `${trimNumber(p.amount)} ${food.unit}`;
+  const count = p.count === 1 ? '' : `${trimNumber(p.count)} × `;
+  return `${count}${p.serving.label} (${trimNumber(portionAmount(p))} ${food.unit})`;
+}
+
+/** Quick amounts offered when weighing or measuring. */
+export const QUICK_AMOUNTS: Record<Unit, number[]> = { g: [50, 100, 150, 200, 250], ml: [150, 250, 330, 500] };
+
+export function defaultPortion(food: Food): Portion {
+  return food.servings.length > 0
+    ? { kind: 'serving', serving: food.servings[0], count: 1 }
+    : { kind: 'amount', amount: food.unit === 'ml' ? 250 : 100 };
+}
+
+/** The name an Entry gets: brand first, unless the product name already includes it. */
+export function entryName(food: Food): string {
+  if (!food.brand || food.name.toLowerCase().includes(food.brand.toLowerCase())) return food.name;
+  return `${food.brand} ${food.name}`;
+}
+
+// ---- Open Food Facts ----
+
+type OffNutriments = Record<string, number | string | undefined>;
+export interface OffProduct {
+  code?: string;
+  product_name?: string;
+  product_name_en?: string;
+  /** A comma-separated string from the product API, a list from search. */
+  brands?: string | string[];
+  quantity?: string;
+  product_quantity?: number | string;
+  product_quantity_unit?: string;
+  serving_size?: string;
+  serving_quantity?: number | string;
+  serving_quantity_unit?: string;
+  categories_tags?: string[];
+  nutriments?: OffNutriments;
+}
+
+const LIQUID = /\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\b/i;
+
+/** Drinks are measured in ml, whichever of Open Food Facts' many hints says so. */
+export function isDrink(p: OffProduct): boolean {
+  return (
+    p.product_quantity_unit === 'ml' ||
+    p.serving_quantity_unit === 'ml' ||
+    (p.categories_tags ?? []).includes('en:beverages') ||
+    LIQUID.test(p.quantity ?? '') ||
+    LIQUID.test(p.serving_size ?? '')
+  );
+}
+
+const num = (v: unknown): number | null => {
+  const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
+/** A usable Food from an Open Food Facts product, or null if it lacks a name or calories. */
+export function foodFromOff(p: OffProduct): Food | null {
+  const name = (p.product_name_en || p.product_name || '').trim();
+  const n = p.nutriments ?? {};
+  const kcal = num(n['energy-kcal_100g']) ?? (num(n['energy_100g']) !== null ? num(n['energy_100g'])! / 4.184 : null);
+  if (!p.code || !name || kcal === null) return null;
+
+  const unit: Unit = isDrink(p) ? 'ml' : 'g';
+  const servingAmount = num(p.serving_quantity);
+  const packAmount = num(p.product_quantity);
+  const servingLabel = (p.serving_size ?? '').replace(/\s*\(.*\)\s*$/, '').trim();
+  const generic = !servingLabel || /^(1\s+)?(portion|serving)$/i.test(servingLabel) || /^\d+([.,]\d+)?\s*(g|grams?|ml|cl|l)$/i.test(servingLabel);
+  const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(a, b) * 0.05;
+
+  const servings: Serving[] = [];
+  if (servingAmount && servingAmount > 0) {
+    const isWholePack = packAmount !== null && near(servingAmount, packAmount);
+    servings.push({ label: isWholePack && generic ? 'Whole pack' : generic ? '1 serving' : servingLabel, amount: servingAmount });
+  }
+  // A whole can or bottle is a natural portion; a whole 1 kg bag of pasta isn't.
+  const packIsPortion = packAmount !== null && packAmount > 0 && packAmount <= (unit === 'ml' ? 3000 : 250);
+  if (packIsPortion && !servings.some((s) => near(s.amount, packAmount))) {
+    servings.push({ label: 'Whole pack', amount: packAmount });
+  }
+
+  return {
+    id: `off:${p.code}`,
+    name,
+    brand: (Array.isArray(p.brands) ? p.brands[0] : p.brands?.split(',')[0])?.trim() || null,
+    unit,
+    per100: {
+      kcal: Math.round(kcal),
+      protein: num(n['proteins_100g']),
+      carbs: num(n['carbohydrates_100g']),
+      fat: num(n['fat_100g']),
+    },
+    servings,
+  };
+}

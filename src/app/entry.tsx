@@ -124,6 +124,7 @@ export default function EntryScreen() {
         eatenAt: eatenAtFor(day).getTime(),
         name: trimmedName,
         foodId: null,
+        portion: null,
       });
     }
     if (trimmedName) await setFavourite(db, { ...nutrition, name: trimmedName, foodId: null }, starred);

@@ -36,6 +36,10 @@ const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  `
+  ALTER TABLE entries ADD COLUMN portion TEXT;
+  ALTER TABLE favourites ADD COLUMN portion TEXT;
+  `,
 ];
 
 /** Applies any migrations newer than the database's user_version. */

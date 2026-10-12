@@ -62,3 +62,29 @@ export function ChevronIcon({ size = 18, tint = color.muted, direction = 'right'
     </Svg>
   );
 }
+
+export function SearchIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={11} cy={11} r={6.5} {...stroke(tint)} />
+      <Path d="M16 16l4.5 4.5" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function BarcodeIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2" {...stroke(tint)} />
+      <Path d="M8 8v8M11 8v8M14 8v8M16.5 8v8" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function BellIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 0 0 4 0" {...stroke(tint)} />
+    </Svg>
+  );
+}

@@ -26,6 +26,7 @@
       "versionCode": 1
     },
     "plugins": [
+      "./plugins/without-push",
       "expo-router",
       [
         "expo-splash-screen",
@@ -57,7 +58,22 @@
           }
         }
       ],
-      "./plugins/with-scene-lifecycle"
+      "./plugins/with-scene-lifecycle",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Graze uses the camera to scan barcodes on food.",
+          "recordAudioAndroid": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#0A0A0A"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

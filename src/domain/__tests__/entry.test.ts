@@ -11,6 +11,7 @@ function entry(over: Partial<Entry>): Entry {
     eatenAt: at(12, 8),
     name: null,
     foodId: null,
+    portion: null,
     kcal: 100,
     protein: null,
     carbs: null,

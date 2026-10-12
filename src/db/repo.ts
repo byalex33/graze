@@ -2,6 +2,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { DayKey } from '@/domain/day';
 import { signatureOf, type Entry, type Goal, type Nutrition, type Relog } from '@/domain/entry';
+import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
+import type { DayStat } from '@/domain/stats';
 import { notifyChanged } from './changes';
 
 interface EntryRow {
@@ -14,6 +16,7 @@ interface EntryRow {
   carbs: number | null;
   fat: number | null;
   food_id: string | null;
+  portion: string | null;
 }
 
 const toEntry = (r: EntryRow): Entry => ({
@@ -26,6 +29,7 @@ const toEntry = (r: EntryRow): Entry => ({
   carbs: r.carbs,
   fat: r.fat,
   foodId: r.food_id,
+  portion: r.portion,
 });
 
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -47,6 +51,14 @@ export async function allEntries(db: SQLiteDatabase): Promise<Entry[]> {
   return rows.map(toEntry);
 }
 
+/** Eaten and Entry count for every Logged Day from `fromDay` on. */
+export async function dayStatsSince(db: SQLiteDatabase, fromDay: DayKey): Promise<DayStat[]> {
+  return db.getAllAsync<DayStat>(
+    'SELECT day, SUM(kcal) AS kcal, COUNT(*) AS entries FROM entries WHERE day >= ? GROUP BY day',
+    fromDay,
+  );
+}
+
 export async function getEntry(db: SQLiteDatabase, id: string): Promise<Entry | null> {
   const row = await db.getFirstAsync<EntryRow>('SELECT * FROM entries WHERE id = ?', id);
   return row ? toEntry(row) : null;
@@ -57,15 +69,16 @@ export interface NewEntry extends Nutrition {
   eatenAt: number;
   name: string | null;
   foodId: string | null;
+  portion: string | null;
 }
 
 export async function addEntry(db: SQLiteDatabase, e: NewEntry): Promise<string> {
   const id = newId();
   const now = Date.now();
   await db.runAsync(
-    `INSERT INTO entries (id, day, eaten_at, name, kcal, protein, carbs, fat, food_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, e.day, e.eatenAt, e.name, e.kcal, e.protein, e.carbs, e.fat, e.foodId, now, now,
+    `INSERT INTO entries (id, day, eaten_at, name, kcal, protein, carbs, fat, food_id, portion, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    id, e.day, e.eatenAt, e.name, e.kcal, e.protein, e.carbs, e.fat, e.foodId, e.portion, now, now,
   );
   notifyChanged();
   return id;
@@ -93,11 +106,11 @@ export async function deleteEntry(db: SQLiteDatabase, id: string): Promise<void>
 export async function favourites(db: SQLiteDatabase): Promise<Relog[]> {
   const rows = await db.getAllAsync<{
     signature: string; name: string; kcal: number; protein: number | null;
-    carbs: number | null; fat: number | null; food_id: string | null;
+    carbs: number | null; fat: number | null; food_id: string | null; portion: string | null;
   }>('SELECT * FROM favourites ORDER BY name COLLATE NOCASE');
   return rows.map((r) => ({
     signature: r.signature, name: r.name, kcal: r.kcal, protein: r.protein,
-    carbs: r.carbs, fat: r.fat, foodId: r.food_id,
+    carbs: r.carbs, fat: r.fat, foodId: r.food_id, portion: r.portion,
   }));
 }
 
@@ -109,16 +122,16 @@ export async function isFavourite(db: SQLiteDatabase, signature: string): Promis
 /** Pins the Entry's current name and Nutrition. Returns false for an unnamed Quick Add. */
 export async function setFavourite(
   db: SQLiteDatabase,
-  e: Nutrition & { name: string | null; foodId: string | null },
+  e: Nutrition & { name: string | null; foodId: string | null; portion?: string | null },
   on: boolean,
 ): Promise<boolean> {
   const signature = signatureOf(e);
   if (!signature) return false;
   if (on) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO favourites (signature, name, kcal, protein, carbs, fat, food_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      signature, e.name!.trim(), e.kcal, e.protein, e.carbs, e.fat, e.foodId, Date.now(),
+      `INSERT OR REPLACE INTO favourites (signature, name, kcal, protein, carbs, fat, food_id, portion, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      signature, e.name!.trim(), e.kcal, e.protein, e.carbs, e.fat, e.foodId, e.portion ?? null, Date.now(),
     );
   } else {
     await db.runAsync('DELETE FROM favourites WHERE signature = ?', signature);
@@ -146,6 +159,16 @@ export async function getGoal(db: SQLiteDatabase): Promise<Goal | null> {
 
 export async function setGoal(db: SQLiteDatabase, goal: Goal): Promise<void> {
   await putSetting(db, 'goal', JSON.stringify(goal));
+  notifyChanged();
+}
+
+export async function getReminder(db: SQLiteDatabase): Promise<ReminderSettings> {
+  const raw = await getSetting(db, 'reminder');
+  return raw ? { ...DEFAULT_REMINDER, ...(JSON.parse(raw) as Partial<ReminderSettings>) } : DEFAULT_REMINDER;
+}
+
+export async function setReminder(db: SQLiteDatabase, reminder: ReminderSettings): Promise<void> {
+  await putSetting(db, 'reminder', JSON.stringify(reminder));
   notifyChanged();
 }
 

@@ -45,6 +45,7 @@ export function rankRecents(entries: readonly Entry[], now: Date, limit: number)
       signature,
       name: latest.name ?? '',
       foodId: latest.foodId,
+      portion: latest.portion,
       kcal: latest.kcal,
       protein: latest.protein,
       carbs: latest.carbs,

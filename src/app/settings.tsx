@@ -14,6 +14,7 @@ import { formatNumber, type Goal } from '@/domain/entry';
 import { checkAppleHealth, type HealthCheck } from '@/health/health-store';
 import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
+import { ReminderSection } from '@/ui/reminder-section';
 import { color, radius, space, type } from '@/ui/theme';
 
 function Row({ label, detail, onPress, danger }: { label: string; detail?: string; onPress: () => void; danger?: boolean }) {
@@ -89,6 +90,9 @@ export default function Settings() {
 
       <Text style={[type.label, styles.section]}>Daily goal</Text>
       <View style={[styles.card, { paddingVertical: space.lg }]}>{shownGoal && <GoalPicker goal={shownGoal} onChange={changeGoal} />}</View>
+
+      <Text style={[type.label, styles.section]}>Reminder</Text>
+      <ReminderSection />
 
       <Text style={[type.label, styles.section]}>{Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect'}</Text>
       <View style={styles.card}>
