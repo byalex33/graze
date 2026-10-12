@@ -1,4 +1,4 @@
-import { defaultPortion, foodFromOff, nutritionFor, portionLabel, type Food } from '../food';
+import { defaultPortion, foodFromOff, nutritionFor, portionLabel, soundsLikeDrink, type Food } from '../food';
 import { reminderTimes } from '../reminder';
 
 const bar: Food = {
@@ -89,6 +89,24 @@ describe('foodFromOff', () => {
       const milk = foodFromOff({ code: '1', product_name: 'Whole Milk', serving_size: '1 serving (100 ml)', serving_quantity: 100, serving_quantity_unit: 'ml', nutriments: { 'energy-kcal_100g': 64 } });
       expect(milk?.unit).toBe('ml');
       expect(milk?.servings).toEqual([{ label: '1 serving', amount: 100 }]);
+    });
+
+    it('falls back to the name when there are no units or category (Tesco Still Strawberry)', () => {
+      const water = foodFromOff({ code: '5052910871930', product_name: 'Still Strawberry', brands: 'Tesco', nutriments: { 'energy-kcal_100g': 1 } });
+      expect(water?.unit).toBe('ml');
+      expect(defaultPortion(water!)).toEqual({ kind: 'amount', amount: 250 });
+    });
+
+    it("doesn't mistake food for drink by name", () => {
+      expect(soundsLikeDrink('Milk Chocolate')).toBe(false);
+      expect(soundsLikeDrink('Tea Cakes')).toBe(false);
+      expect(soundsLikeDrink('Coffee beans')).toBe(false);
+      expect(soundsLikeDrink('Sparkling Water Lime')).toBe(true);
+      expect(soundsLikeDrink('Orange Juice with bits')).toBe(true);
+    });
+
+    it('believes stated grams over a drinky name', () => {
+      expect(foodFromOff({ code: '1', product_name: 'Iced tea mix', product_quantity_unit: 'g', nutriments: { 'energy-kcal_100g': 380 } })?.unit).toBe('g');
     });
 
     it('spots a drink from its category', () => {

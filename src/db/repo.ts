@@ -1,10 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { DayKey } from '@/domain/day';
+import { dayKeyOf, type DayKey } from '@/domain/day';
 import { signatureOf, type Entry, type Goal, type Nutrition, type Relog } from '@/domain/entry';
+import type { Unit } from '@/domain/food';
 import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
 import type { DayStat } from '@/domain/stats';
-import { notifyChanged } from './changes';
+import { emitFirstOfDay, notifyChanged } from './changes';
 
 interface EntryRow {
   id: string;
@@ -81,7 +82,17 @@ export async function addEntry(db: SQLiteDatabase, e: NewEntry): Promise<string>
     id, e.day, e.eatenAt, e.name, e.kcal, e.protein, e.carbs, e.fat, e.foodId, e.portion, now, now,
   );
   notifyChanged();
+  await maybeCelebrate(db, e.day);
   return id;
+}
+
+/** Today just became a Logged Day, for the first time today: celebrate once. */
+async function maybeCelebrate(db: SQLiteDatabase, day: DayKey): Promise<void> {
+  if (day !== dayKeyOf(new Date())) return;
+  const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM entries WHERE day = ?', day);
+  if (row?.n !== 1 || (await getSetting(db, 'celebrated')) === day) return;
+  await putSetting(db, 'celebrated', day);
+  emitFirstOfDay();
 }
 
 export async function updateEntry(
@@ -159,6 +170,20 @@ export async function getGoal(db: SQLiteDatabase): Promise<Goal | null> {
 
 export async function setGoal(db: SQLiteDatabase, goal: Goal): Promise<void> {
   await putSetting(db, 'goal', JSON.stringify(goal));
+  notifyChanged();
+}
+
+/** Per-Food choice of g or ml, for when the data guessed wrong. */
+export async function getUnitOverride(db: SQLiteDatabase, foodId: string): Promise<Unit | null> {
+  const raw = await getSetting(db, 'units');
+  return raw ? ((JSON.parse(raw) as Record<string, Unit>)[foodId] ?? null) : null;
+}
+
+export async function setUnitOverride(db: SQLiteDatabase, foodId: string, unit: Unit): Promise<void> {
+  const raw = await getSetting(db, 'units');
+  const map = raw ? (JSON.parse(raw) as Record<string, Unit>) : {};
+  map[foodId] = unit;
+  await putSetting(db, 'units', JSON.stringify(map));
   notifyChanged();
 }
 

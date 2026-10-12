@@ -6,10 +6,10 @@ import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
-import { addEntry, isFavourite, setFavourite } from '@/db/repo';
+import { addEntry, getUnitOverride, isFavourite, setFavourite, setUnitOverride } from '@/db/repo';
 import { dayKeyOf, dayLabel, eatenAtFor, type DayKey } from '@/domain/day';
 import { formatNumber } from '@/domain/entry';
-import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, type Portion } from '@/domain/food';
+import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, withUnit, type Portion, type Unit } from '@/domain/food';
 import { foodById } from '@/food/registry';
 import { StarIcon } from '@/ui/icons';
 import { RollingNumber } from '@/ui/rolling-number';
@@ -38,14 +38,21 @@ export default function FoodScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; day?: DayKey }>();
   const day = params.day ?? dayKeyOf(new Date());
-  const food = foodById(params.id);
+  const found = foodById(params.id);
+  const savedUnit = useQuery((d) => getUnitOverride(d, params.id), [params.id]);
+  const [chosenUnit, setChosenUnit] = useState<Unit | null>(null);
+  const unit = chosenUnit ?? savedUnit ?? found?.unit;
+  const food = found && unit ? withUnit(found, unit) : null;
 
-  const [portion, setPortion] = useState<Portion | null>(food ? defaultPortion(food) : null);
-  const [amountText, setAmountText] = useState(food?.unit === 'ml' ? '250' : '100');
+  const [chosenPortion, setPortion] = useState<Portion | null>(null);
+  const portion = chosenPortion ?? (food ? defaultPortion(food) : null);
+  const [amountText, setAmountText] = useState<string | null>(null);
+  const shownAmount = amountText ?? (portion?.kind === 'amount' ? String(portion.amount) : String(QUICK_AMOUNTS[food?.unit ?? 'g'][1]));
   const starredInDb = useQuery((d) => isFavourite(d, `food:${params.id}`), [params.id]);
   const [starred, setStarred] = useState<boolean | null>(null);
   const isStarred = starred ?? starredInDb ?? false;
 
+  if (savedUnit === undefined && found) return <View style={styles.screen} />;
   if (!food || !portion) {
     return (
       <View style={[styles.screen, styles.centre]}>
@@ -65,6 +72,15 @@ export default function FoodScreen() {
     if (starred !== null) await setFavourite(db, entry, starred);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.dismissAll();
+  };
+
+  const switchUnit = () => {
+    const next: Unit = food.unit === 'g' ? 'ml' : 'g';
+    Haptics.selectionAsync();
+    setChosenUnit(next);
+    setUnitOverride(db, food.id, next);
+    setAmountText(null);
+    setPortion(defaultPortion(withUnit(food, next)));
   };
 
   const setAmount = (text: string) => {
@@ -96,10 +112,15 @@ export default function FoodScreen() {
         <View style={{ gap: space.xs }}>
           {food.brand && <Text style={type.eyebrow}>{food.brand}</Text>}
           <Text style={type.title}>{food.name}</Text>
-          <Text style={type.small}>
-            {formatNumber(food.per100.kcal)} kcal per 100 {food.unit}
-            {food.id.startsWith('cofid:') ? ' · UK generic' : ''}
-          </Text>
+          <View style={styles.perRow}>
+            <Text style={type.small}>
+              {formatNumber(food.per100.kcal)} kcal per 100 {food.unit}
+              {food.id.startsWith('cofid:') ? ' · UK generic' : ''}
+            </Text>
+            <Pressable onPress={switchUnit} hitSlop={8} style={styles.unitChip}>
+              <Text style={type.small}>{food.unit === 'g' ? 'It’s a drink' : 'It’s food'}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.hero}>
@@ -119,7 +140,7 @@ export default function FoodScreen() {
                 key={kind}
                 onPress={() => {
                   Haptics.selectionAsync();
-                  setPortion(kind === 'serving' ? { kind, serving, count: 1 } : { kind, amount: Number(amountText) || QUICK_AMOUNTS[food.unit][1] });
+                  setPortion(kind === 'serving' ? { kind, serving, count: 1 } : { kind, amount: Number(shownAmount) || QUICK_AMOUNTS[food.unit][1] });
                 }}
                 style={[styles.segment, portion.kind === kind && styles.segmentOn]}
               >
@@ -149,7 +170,7 @@ export default function FoodScreen() {
           <View style={{ gap: space.md }}>
             <View style={styles.amountField}>
               <TextInput
-                value={amountText}
+                value={shownAmount}
                 onChangeText={setAmount}
                 keyboardType="decimal-pad"
                 keyboardAppearance="dark"
@@ -186,6 +207,8 @@ const styles = StyleSheet.create({
   macros: { flexDirection: 'row', gap: space.sm, marginTop: -space.md },
   macro: { flex: 1, backgroundColor: color.card, borderRadius: radius.md, padding: space.md, gap: 6 },
   macroValue: { ...type.number, fontSize: 20, letterSpacing: -0.8 },
+  perRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
+  unitChip: { paddingHorizontal: space.sm, paddingVertical: 3, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: color.faint },
   segmented: { flexDirection: 'row', backgroundColor: color.card, borderRadius: radius.pill, padding: 4 },
   segment: { flex: 1, alignItems: 'center', paddingVertical: space.sm, borderRadius: radius.pill },
   segmentOn: { backgroundColor: color.text },

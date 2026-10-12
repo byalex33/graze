@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useDataVersion, useQuery } from '@/db/changes';
+import { onFirstOfDay, useDataVersion, useQuery } from '@/db/changes';
 import { addEntry, dayStatsSince, entriesSince, getGoal } from '@/db/repo';
 import { addDays, dayLabel, daysBetween, eatenAtFor, startOfDay, type DayKey } from '@/domain/day';
 import type { Relog } from '@/domain/entry';
 import { rankRecents } from '@/domain/recents';
 import { syncReminders } from '@/reminder/scheduler';
+import { Celebration } from '@/ui/celebration';
 import { DayPage, HEATMAP_WEEKS } from '@/ui/day-page';
 import { FabMenu } from '@/ui/fab-menu';
 import { GearIcon } from '@/ui/icons';
@@ -43,6 +44,19 @@ export default function Today() {
   useEffect(() => {
     syncReminders(db).catch(() => {});
   }, [db, dataVersion, today]);
+
+  // Wait for whichever sheet you logged from to slide away, then celebrate.
+  const [celebrating, setCelebrating] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = onFirstOfDay(() => {
+      timer = setTimeout(() => setCelebrating(true), 450);
+    });
+    return () => {
+      off();
+      clearTimeout(timer);
+    };
+  }, []);
   const recentEntries = useQuery((d) => entriesSince(d, Date.now() - RECENTS_WINDOW_MS), [today]);
   // Enough history for the heatmap plus the sparkline on the oldest heatmap Day.
   const stats = useQuery((d) => dayStatsSince(d, addDays(today, -(HEATMAP_WEEKS * 7 + 14))), [today]);
@@ -122,6 +136,7 @@ export default function Today() {
         onScan={() => router.push({ pathname: '/scan', params: { day: viewedDay } })}
         blurTarget={blurTarget}
       />
+      {celebrating && <Celebration onDone={() => setCelebrating(false)} />}
     </View>
   );
 }

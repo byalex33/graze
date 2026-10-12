@@ -85,16 +85,38 @@ export interface OffProduct {
 }
 
 const LIQUID = /\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\b/i;
+const SOLID = /\b\d+(?:[.,]\d+)?\s*(?:g|kg)\b/i;
+const DRINK_WORDS =
+  /\b(water|juice|drink|squash|cordial|cola|lemonade|soda|tonic|still|sparkling|smoothie|milkshake|shake|tea|coffee|latte|cappuccino|lager|beer|ale|stout|cider|wine|prosecco|gin|vodka|kombucha|kefir)\b/i;
+const NOT_DRINK_WORDS =
+  /\b(cake|cakes|bar|bars|biscuits?|cookies?|chocolate|crisps|ice cream|lolly|lollies|sweets|gum|powder|bags?|granules|beans|pods|capsules|jelly|pastilles|loaf|bread|crackers?)\b/i;
 
-/** Drinks are measured in ml, whichever of Open Food Facts' many hints says so. */
-export function isDrink(p: OffProduct): boolean {
-  return (
+/** For products with no units or category at all: does the name read like a drink? */
+export function soundsLikeDrink(name: string): boolean {
+  return DRINK_WORDS.test(name) && !NOT_DRINK_WORDS.test(name);
+}
+
+/**
+ * Drinks are measured in ml. Trust Open Food Facts' units and category when it has them;
+ * many UK products have neither, so fall back to the name.
+ */
+export function isDrink(p: OffProduct, name: string): boolean {
+  if (
     p.product_quantity_unit === 'ml' ||
     p.serving_quantity_unit === 'ml' ||
     (p.categories_tags ?? []).includes('en:beverages') ||
     LIQUID.test(p.quantity ?? '') ||
     LIQUID.test(p.serving_size ?? '')
-  );
+  ) {
+    return true;
+  }
+  const saysSolid = p.product_quantity_unit === 'g' || p.serving_quantity_unit === 'g' || SOLID.test(p.quantity ?? '');
+  return !saysSolid && soundsLikeDrink(name);
+}
+
+/** The same Food measured the other way; per-100 values carry over (100 g of a drink ≈ 100 ml). */
+export function withUnit(food: Food, unit: Unit): Food {
+  return food.unit === unit ? food : { ...food, unit };
 }
 
 const num = (v: unknown): number | null => {
@@ -109,7 +131,7 @@ export function foodFromOff(p: OffProduct): Food | null {
   const kcal = num(n['energy-kcal_100g']) ?? (num(n['energy_100g']) !== null ? num(n['energy_100g'])! / 4.184 : null);
   if (!p.code || !name || kcal === null) return null;
 
-  const unit: Unit = isDrink(p) ? 'ml' : 'g';
+  const unit: Unit = isDrink(p, name) ? 'ml' : 'g';
   const servingAmount = num(p.serving_quantity);
   const packAmount = num(p.product_quantity);
   const servingLabel = (p.serving_size ?? '').replace(/\s*\(.*\)\s*$/, '').trim();

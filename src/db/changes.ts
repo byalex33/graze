@@ -44,3 +44,15 @@ export function useQuery<T>(
 
   return result;
 }
+
+/** Fired once a day, when today becomes a Logged Day. */
+const firstOfDayListeners = new Set<() => void>();
+
+export function emitFirstOfDay(): void {
+  firstOfDayListeners.forEach((l) => l());
+}
+
+export function onFirstOfDay(listener: () => void): () => void {
+  firstOfDayListeners.add(listener);
+  return () => firstOfDayListeners.delete(listener);
+}
