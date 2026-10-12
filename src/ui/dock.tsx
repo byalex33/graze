@@ -44,13 +44,13 @@ function DockButton({
   item,
   index,
   finger,
-  bounce,
+  press,
   accent,
 }: {
   item: DockItem;
   index: number;
   finger: SharedValue<number>;
-  bounce: SharedValue<number>;
+  press: SharedValue<number>;
   accent: { value: string; on: string };
 }) {
   // Worked out here, on the JS thread; the style below runs on the UI thread and can only use plain values.
@@ -59,7 +59,7 @@ function DockButton({
     const near = finger.value < 0 ? 0 : Math.max(0, 1 - Math.abs(finger.value - centre) / REACH);
     // Ease the falloff so the icon under the finger leads and its neighbours follow.
     const swell = withSpring(1 + SWELL * near * near, { damping: 16, stiffness: 260 });
-    return { transform: [{ translateY: bounce.value - (near * near * SIZE * SWELL) / 2 }, { scale: swell }] };
+    return { transform: [{ translateY: -(near * near * SIZE * SWELL) / 2 }, { scale: swell }, { scale: 1 - press.value * 0.12 }] };
   });
 
   const bg = item.primary ? accent.value : color.cardRaised;
@@ -78,8 +78,8 @@ interface DockProps {
 }
 
 /**
- * macOS-style dock for logging. Slide a finger along it and the icons swell under it,
- * with the name of the one you're on above; lift (or tap) to open it with a bounce.
+ * macOS-style dock for logging. Slide a finger along it and the icons swell under it;
+ * lift (or tap) to open one, which gives a small squeeze as it opens.
  */
 export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn }: DockProps) {
   const insets = useSafeAreaInsets();
@@ -96,7 +96,7 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
   const width = PAD * 2 + items.length * SIZE + (items.length - 1) * GAP;
 
   const finger = useSharedValue(-1);
-  const bounces = [useSharedValue(0), useSharedValue(0), useSharedValue(0), useSharedValue(0), useSharedValue(0)];
+  const presses = [useSharedValue(0), useSharedValue(0), useSharedValue(0), useSharedValue(0), useSharedValue(0)];
 
   const indexAt = (x: number) => {
     'worklet';
@@ -106,9 +106,8 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
 
   const launch = (i: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const b = bounces[i];
-    // Two hops, the second smaller, like an app launching from the Dock.
-    b.set(withSequence(withTiming(-16, { duration: 140 }), withSpring(0, { damping: 7, stiffness: 300 }), withTiming(-7, { duration: 100 }), withSpring(0, { damping: 9, stiffness: 300 })));
+    // A quick squeeze and spring back, like pressing a button.
+    presses[i].set(withSequence(withTiming(1, { duration: 70 }), withSpring(0, { damping: 12, stiffness: 320 })));
     const item = items[i];
     if (item.key !== 'recent') setRecentOpen(false);
     item.onPress();
@@ -202,7 +201,7 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
               onAccessibilityTap={() => launch(i)}
               style={styles.slot}
             >
-              <DockButton item={item} index={i} finger={finger} bounce={bounces[i]} accent={accent} />
+              <DockButton item={item} index={i} finger={finger} press={presses[i]} accent={accent} />
               <Text style={styles.caption} numberOfLines={1}>
                 {item.label}
               </Text>
