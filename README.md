@@ -20,6 +20,7 @@ So I built Graze. It's free, there's no account, and it never sends you a notifi
 - Star anything you have a lot and it's always one tap away
 - Calories and protein against a daily goal you set. Carbs and fat are tracked too, without targets
 - Swipe back through previous days, see the last fortnight as a sparkline and the last 20 weeks as a grid
+- Connect Apple Health or Health Connect to see what you burn next to what you eat, and keep your weight in one place (stones, kg or lb)
 - One optional reminder, off by default, that only goes off if you haven't logged anything that day
 - Export everything to CSV whenever you like
 
@@ -58,8 +59,9 @@ You'll need Xcode, Developer Mode turned on on the phone, and your Apple ID adde
 - [x] Quick Add, Recents, Favourites, daily goal, day history, CSV export
 - [x] Barcode scanning and food search
 - [x] The one optional reminder
-- [ ] Apple Health and Health Connect: calories burned, weight, and saving what you log
-- [ ] Weight trend
+- [x] Apple Health and Health Connect: calories burned, weigh-ins, and saving what you log
+- [x] Weight trend
+- [ ] First Android release
 
 ## Where the food data comes from
 
