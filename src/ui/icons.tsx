@@ -97,3 +97,64 @@ export function ScaleIcon({ size = 20, tint = color.text }: IconProps) {
     </Svg>
   );
 }
+
+export function TargetIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={8} {...stroke(tint)} />
+      <Circle cx={12} cy={12} r={4} {...stroke(tint)} />
+      <Circle cx={12} cy={12} r={0.8} {...stroke(tint)} fill={tint} />
+    </Svg>
+  );
+}
+
+export function PaletteIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 4a8 8 0 1 0 0 16c1.1 0 1.6-.7 1.6-1.5 0-1.3-1-1.6-1-2.6 0-.9.7-1.4 1.6-1.4H16a4 4 0 0 0 4-4c0-3.6-3.6-6.5-8-6.5z" {...stroke(tint)} />
+      <Circle cx={8} cy={11} r={1} fill={tint} />
+      <Circle cx={10.5} cy={7.5} r={1} fill={tint} />
+      <Circle cx={14.5} cy={7.5} r={1} fill={tint} />
+    </Svg>
+  );
+}
+
+export function LayoutIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 4h14a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM5 14h5a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zM14 14h5a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function HeartIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 19.5s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.6-7.5 10-7.5 10z" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function ExportIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function TrashIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.5 11v5M13.5 11v5" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
+export function CheckIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 12.5l4.5 4.5L19 7.5" {...stroke(tint)} strokeWidth={2.2} />
+    </Svg>
+  );
+}
