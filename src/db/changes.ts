@@ -1,6 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 
+import type { Entry } from '@/domain/entry';
+import type { WeighIn } from '@/domain/weight';
+
 /**
  * Every write bumps a version; every useQuery re-runs when it changes.
  * The data is small enough that re-reading is cheaper than tracking what changed.
@@ -55,4 +58,22 @@ export function emitFirstOfDay(): void {
 export function onFirstOfDay(listener: () => void): () => void {
   firstOfDayListeners.add(listener);
   return () => firstOfDayListeners.delete(listener);
+}
+
+/** Every Entry and Weigh-in write, so the Health Store can mirror it. */
+export type WriteEvent =
+  | { kind: 'entry-saved'; entry: Entry; version: number }
+  | { kind: 'entry-deleted'; id: string }
+  | { kind: 'weigh-in-saved'; id: string; weighIn: WeighIn }
+  | { kind: 'weigh-in-deleted'; id: string };
+
+const writeListeners = new Set<(e: WriteEvent) => void>();
+
+export function emitWrite(event: WriteEvent): void {
+  writeListeners.forEach((l) => l(event));
+}
+
+export function onWrite(listener: (e: WriteEvent) => void): () => void {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
 }

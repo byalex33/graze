@@ -6,10 +6,12 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { useQuery } from '@/db/changes';
-import { deleteEntry, entriesForDay } from '@/db/repo';
+import { deleteEntry, entriesForDay, getWeightUnit } from '@/db/repo';
 import { addDays, clockTime, dayLabel, startOfDay, type DayKey } from '@/domain/day';
 import { formatNumber, totalsOf, type Entry, type Goal } from '@/domain/entry';
 import { averageLogged, series, type DayStat } from '@/domain/stats';
+import { formatWeight, formatWeightChange, weightTrend } from '@/domain/weight';
+import { useBurned, useWeighIns } from '@/health/use-health';
 import { DayBar } from './day-bar';
 import { Heatmap } from './heatmap';
 import { RollingNumber } from './rolling-number';
@@ -17,9 +19,57 @@ import { Sparkline } from './sparkline';
 import { color, family, radius, space, type } from './theme';
 
 const TREND_DAYS = 14;
+const WEIGHT_DAYS = 30;
 export const HEATMAP_WEEKS = 20;
 
-function Hero({ entries, goal }: { entries: readonly Entry[]; goal: Goal }) {
+/** "620 burned so far" today; "2,340 burned · Net −340" for Completed Days with resting energy. */
+function BurnedLine({ day, today, eaten }: { day: DayKey; today: DayKey; eaten: number }) {
+  const burned = useBurned(day);
+  if (!burned) return null;
+  const total = burned.active + (burned.resting ?? 0);
+  const completed = day < today;
+  const net = Math.round(eaten - total);
+  let text: string;
+  if (!completed) text = `${formatNumber(total)} burned so far`;
+  else if (burned.resting === null) text = `${formatNumber(burned.active)} active burned`;
+  else text = `${formatNumber(total)} burned · Net ${net < 0 ? '−' : '+'}${formatNumber(Math.abs(net))}`;
+  return (
+    <Animated.Text entering={FadeIn} style={[type.small, styles.burned]}>
+      {text}
+    </Animated.Text>
+  );
+}
+
+function WeightCard({ day, today }: { day: DayKey; today: DayKey }) {
+  const unit = useQuery(getWeightUnit, []);
+  const since = startOfDay(addDays(day, -(WEIGHT_DAYS + 60))).getTime();
+  const weighIns = useWeighIns(since);
+  if (!unit || !weighIns || weighIns.length === 0) return null;
+
+  const trend = weightTrend(weighIns, day, WEIGHT_DAYS);
+  const latest = [...trend].reverse().find((v) => v !== null) ?? null;
+  const first = trend.find((v) => v !== null) ?? null;
+  if (latest === null) return null;
+  const labels = trend.map((_, i) => {
+    const d = addDays(day, i - WEIGHT_DAYS + 1);
+    const label = dayLabel(d, today);
+    return label === 'Today' || label === 'Yesterday' ? label : shortDate(d);
+  });
+  return (
+    <Sparkline
+      values={trend}
+      labels={labels}
+      title={`Weight trend · ${WEIGHT_DAYS} days`}
+      headline={latest}
+      detail={first !== null && first !== latest ? `${formatWeightChange(latest - first, unit)} over ${WEIGHT_DAYS} days` : 'trend'}
+      format={(kg) => formatWeight(kg, unit)}
+      unit="trend"
+      showDots={false}
+    />
+  );
+}
+
+function Hero({ entries, goal, day, today }: { entries: readonly Entry[]; goal: Goal; day: DayKey; today: DayKey }) {
   const t = totalsOf(entries);
   const left = Math.round(goal.kcal - t.kcal);
   const over = left < 0;
@@ -36,6 +86,7 @@ function Hero({ entries, goal }: { entries: readonly Entry[]; goal: Goal }) {
       <View style={{ marginTop: space.lg }}>
         <DayBar kcals={entries.map((e) => e.kcal)} goal={goal.kcal} />
       </View>
+      <BurnedLine day={day} today={today} eaten={t.kcal} />
     </View>
   );
 }
@@ -130,7 +181,7 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
 
   return (
     <ScrollView style={{ width }} contentContainerStyle={[styles.page, { paddingBottom: bottomInset }]}>
-      <Hero entries={entries} goal={goal} />
+      <Hero entries={entries} goal={goal} day={day} today={today} />
 
       <View style={styles.tiles}>
         <Tile label="Protein" value={t.protein} unit={`/ ${goal.protein} g`} progress={t.protein / goal.protein} />
@@ -163,6 +214,8 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
         detail={delta === null ? 'kcal' : `kcal · ${delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(delta))} vs week before`}
       />
 
+      <WeightCard day={day} today={today} />
+
       <Heatmap stats={stats} today={today} selected={day} weeks={HEATMAP_WEEKS} onSelect={onSelectDay} />
     </ScrollView>
   );
@@ -173,6 +226,7 @@ const styles = StyleSheet.create({
   hero: { paddingTop: space.md, paddingBottom: space.sm },
   heroNumber: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, marginVertical: space.xs },
   heroUnit: { ...type.small, fontSize: 15, marginBottom: 12 },
+  burned: { marginTop: space.sm },
   tiles: { flexDirection: 'row', gap: space.sm },
   tile: { flex: 1, backgroundColor: color.card, borderRadius: radius.md, padding: space.md, gap: 6 },
   tileValue: { ...type.number, fontSize: 20, letterSpacing: -0.8 },

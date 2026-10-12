@@ -23,7 +23,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_BASAL_METABOLIC_RATE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.WRITE_WEIGHT",
+        "android.permission.health.WRITE_NUTRITION"
+      ]
     },
     "plugins": [
       "./plugins/without-push",
@@ -54,7 +61,8 @@
               "arm64-v8a"
             ],
             "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "minSdkVersion": 26
           }
         }
       ],
@@ -73,7 +81,9 @@
           "icon": "./assets/images/android-icon-monochrome.png",
           "color": "#0A0A0A"
         }
-      ]
+      ],
+      "react-native-health-connect",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

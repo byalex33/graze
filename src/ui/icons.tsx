@@ -88,3 +88,12 @@ export function BellIcon({ size = 20, tint = color.text }: IconProps) {
     </Svg>
   );
 }
+
+export function ScaleIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" {...stroke(tint)} />
+      <Path d="M8.5 9a5 5 0 0 1 7 0M12 9.5l1.2-2" {...stroke(tint)} />
+    </Svg>
+  );
+}

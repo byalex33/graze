@@ -134,6 +134,7 @@ export default function Today() {
         onQuickAdd={() => router.push({ pathname: '/entry', params: { day: viewedDay } })}
         onSearch={() => router.push({ pathname: '/search', params: { day: viewedDay } })}
         onScan={() => router.push({ pathname: '/scan', params: { day: viewedDay } })}
+        onWeighIn={() => router.push('/weigh-in')}
         blurTarget={blurTarget}
       />
       {celebrating && <Celebration onDone={() => setCelebrating(false)} />}

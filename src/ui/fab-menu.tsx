@@ -14,7 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatNumber, type Relog } from '@/domain/entry';
-import { BarcodeIcon, PencilIcon, PlusIcon, SearchIcon } from './icons';
+import { BarcodeIcon, PencilIcon, PlusIcon, ScaleIcon, SearchIcon } from './icons';
 import { color, radius, space, type } from './theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -27,6 +27,7 @@ interface FabMenuProps {
   onQuickAdd: () => void;
   onSearch: () => void;
   onScan: () => void;
+  onWeighIn: () => void;
   /** Android only: the view the frosted screen blurs. */
   blurTarget: RefObject<View | null>;
 }
@@ -35,7 +36,7 @@ interface FabMenuProps {
  * The + folds into a ×, and its actions unfold upward over a frosted screen.
  * Recents sit above the actions so re-logging stays two taps.
  */
-export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, blurTarget }: FabMenuProps) {
+export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn, blurTarget }: FabMenuProps) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
@@ -68,6 +69,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, blurTa
         onRelog(r);
       },
     })),
+    { key: 'weigh-in', label: 'Weigh-in', icon: <ScaleIcon size={18} />, onPress: onWeighIn },
     { key: 'search', label: 'Search', icon: <SearchIcon size={18} />, onPress: onSearch },
     { key: 'scan', label: 'Scan barcode', icon: <BarcodeIcon size={18} />, onPress: onScan },
     { key: 'quick-add', label: 'Quick Add', icon: <PencilIcon size={18} tint={color.bg} />, onPress: onQuickAdd },
@@ -109,7 +111,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, blurTa
                   style={({ pressed }) => [
                     styles.action,
                     a.key === 'quick-add' && styles.primaryAction,
-                    a.key === 'search' && recents.length > 0 && styles.firstTool,
+                    a.key === 'weigh-in' && recents.length > 0 && styles.firstTool,
                     pressed && styles.pressed,
                   ]}
                 >

@@ -81,6 +81,10 @@ Protein, carbs and fat. Protein is first-class alongside calories; carbs and fat
 One body-weight measurement, either read from the Health Store or entered in the app (and then written to the Health Store).
 _Avoid_: Weight log, weight entry
 
+**Weight Trend**:
+A smoothed line through Weigh-ins, so daily water and salt swings don't read as gain or loss.
+_Avoid_: Average weight, true weight
+
 ### Platform
 
 **Health Store**:

@@ -40,6 +40,15 @@ const MIGRATIONS: string[] = [
   ALTER TABLE entries ADD COLUMN portion TEXT;
   ALTER TABLE favourites ADD COLUMN portion TEXT;
   `,
+  `
+  CREATE TABLE weigh_ins (
+    id TEXT PRIMARY KEY NOT NULL,
+    at INTEGER NOT NULL,
+    kg REAL NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX weigh_ins_at ON weigh_ins (at);
+  `,
 ];
 
 /** Applies any migrations newer than the database's user_version. */

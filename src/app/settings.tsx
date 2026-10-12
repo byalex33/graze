@@ -10,10 +10,10 @@ import { useQuery } from '@/db/changes';
 import { allEntries, deleteAllData, getGoal, setGoal } from '@/db/repo';
 import { entriesToCsv } from '@/domain/csv';
 import { dayKeyOf } from '@/domain/day';
-import { formatNumber, type Goal } from '@/domain/entry';
-import { checkAppleHealth, type HealthCheck } from '@/health/health-store';
+import type { Goal } from '@/domain/entry';
 import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
+import { HealthSection } from '@/ui/health-section';
 import { ReminderSection } from '@/ui/reminder-section';
 import { color, radius, space, type } from '@/ui/theme';
 
@@ -31,7 +31,6 @@ export default function Settings() {
   const insets = useSafeAreaInsets();
   const savedGoal = useQuery(getGoal, []);
   const [goal, setLocalGoal] = useState<Goal | null>(null);
-  const [health, setHealth] = useState<HealthCheck | 'checking' | null>(null);
 
   // Local copy so the wheels don't jump while the save round-trips.
   const shownGoal = goal ?? savedGoal;
@@ -52,7 +51,7 @@ export default function Settings() {
   const confirmDeleteAll = () =>
     Alert.alert(
       'Delete all data?',
-      'Every entry, favourite and your goal are removed from this phone. Anything already in Apple Health or Health Connect stays there.',
+      'Every entry, favourite, weigh-in and your goal are removed from this phone. Anything already in Apple Health or Health Connect stays there.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -66,17 +65,6 @@ export default function Settings() {
         },
       ],
     );
-
-  const testHealth = async () => {
-    setHealth('checking');
-    setHealth(await checkAppleHealth());
-  };
-
-  const healthDetail =
-    health === null ? 'Test' :
-    health === 'checking' ? 'Checking…' :
-    health.ok ? (health.activeKcalToday === null ? 'Connected' : `${formatNumber(health.activeKcalToday)} kcal active today`) :
-    'Failed';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={[styles.body, { paddingTop: Platform.OS === 'android' ? insets.top + space.lg : space.lg, paddingBottom: insets.bottom + space.xxl }]}>
@@ -95,10 +83,7 @@ export default function Settings() {
       <ReminderSection />
 
       <Text style={[type.label, styles.section]}>{Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect'}</Text>
-      <View style={styles.card}>
-        <Row label={Platform.OS === 'ios' ? 'Test connection' : 'Coming in step 3'} detail={Platform.OS === 'ios' ? healthDetail : undefined} onPress={testHealth} />
-      </View>
-      {health && health !== 'checking' && !health.ok && <Text style={[type.small, styles.note]}>{health.reason}</Text>}
+      <HealthSection />
 
       <Text style={[type.label, styles.section]}>Your data</Text>
       <View style={styles.card}>

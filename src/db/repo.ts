@@ -4,8 +4,10 @@ import { dayKeyOf, type DayKey } from '@/domain/day';
 import { signatureOf, type Entry, type Goal, type Nutrition, type Relog } from '@/domain/entry';
 import type { Unit } from '@/domain/food';
 import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
+import { defaultWeightUnit, type WeighIn, type WeightUnit } from '@/domain/weight';
+import { getLocales } from 'expo-localization';
 import type { DayStat } from '@/domain/stats';
-import { emitFirstOfDay, notifyChanged } from './changes';
+import { emitFirstOfDay, emitWrite, notifyChanged } from './changes';
 
 interface EntryRow {
   id: string;
@@ -82,6 +84,7 @@ export async function addEntry(db: SQLiteDatabase, e: NewEntry): Promise<string>
     id, e.day, e.eatenAt, e.name, e.kcal, e.protein, e.carbs, e.fat, e.foodId, e.portion, now, now,
   );
   notifyChanged();
+  emitWrite({ kind: 'entry-saved', entry: { ...e, id }, version: now });
   await maybeCelebrate(db, e.day);
   return id;
 }
@@ -105,11 +108,20 @@ export async function updateEntry(
     e.name, e.kcal, e.protein, e.carbs, e.fat, Date.now(), id,
   );
   notifyChanged();
+  const row = await db.getFirstAsync<EntryRow & { updated_at: number }>('SELECT * FROM entries WHERE id = ?', id);
+  if (row) emitWrite({ kind: 'entry-saved', entry: toEntry(row), version: row.updated_at });
+}
+
+/** Entries whose copy in the Health Store should exist: everything from `fromDay` on. */
+export async function entriesForMirroring(db: SQLiteDatabase, fromDay: DayKey): Promise<{ entry: Entry; version: number }[]> {
+  const rows = await db.getAllAsync<EntryRow & { updated_at: number }>('SELECT * FROM entries WHERE day >= ?', fromDay);
+  return rows.map((r) => ({ entry: toEntry(r), version: r.updated_at }));
 }
 
 export async function deleteEntry(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync('DELETE FROM entries WHERE id = ?', id);
   notifyChanged();
+  emitWrite({ kind: 'entry-deleted', id });
 }
 
 // ---- Favourites ----
@@ -173,6 +185,45 @@ export async function setGoal(db: SQLiteDatabase, goal: Goal): Promise<void> {
   notifyChanged();
 }
 
+// ---- Weigh-ins ----
+
+export async function addWeighIn(db: SQLiteDatabase, w: WeighIn): Promise<string> {
+  const id = newId();
+  await db.runAsync('INSERT INTO weigh_ins (id, at, kg, created_at) VALUES (?, ?, ?, ?)', id, w.at, w.kg, Date.now());
+  notifyChanged();
+  emitWrite({ kind: 'weigh-in-saved', id, weighIn: w });
+  return id;
+}
+
+export async function weighInsSince(db: SQLiteDatabase, sinceMs: number): Promise<(WeighIn & { id: string })[]> {
+  return db.getAllAsync('SELECT id, at, kg FROM weigh_ins WHERE at >= ? ORDER BY at ASC', sinceMs);
+}
+
+export async function deleteWeighIn(db: SQLiteDatabase, id: string): Promise<void> {
+  await db.runAsync('DELETE FROM weigh_ins WHERE id = ?', id);
+  notifyChanged();
+  emitWrite({ kind: 'weigh-in-deleted', id });
+}
+
+export async function getWeightUnit(db: SQLiteDatabase): Promise<WeightUnit> {
+  return ((await getSetting(db, 'weightUnit')) as WeightUnit | null) ?? defaultWeightUnit(getLocales()[0]?.measurementSystem);
+}
+
+export async function setWeightUnit(db: SQLiteDatabase, unit: WeightUnit): Promise<void> {
+  await putSetting(db, 'weightUnit', unit);
+  notifyChanged();
+}
+
+/** Whether the user chose to connect the Health Store. */
+export async function isHealthLinked(db: SQLiteDatabase): Promise<boolean> {
+  return (await getSetting(db, 'healthLinked')) === '1';
+}
+
+export async function setHealthLinked(db: SQLiteDatabase, linked: boolean): Promise<void> {
+  await putSetting(db, 'healthLinked', linked ? '1' : '0');
+  notifyChanged();
+}
+
 /** Per-Food choice of g or ml, for when the data guessed wrong. */
 export async function getUnitOverride(db: SQLiteDatabase, foodId: string): Promise<Unit | null> {
   const raw = await getSetting(db, 'units');
@@ -200,7 +251,7 @@ export async function setReminder(db: SQLiteDatabase, reminder: ReminderSettings
 /** Removes everything Graze stores on the phone. Health Store data is untouched. */
 export async function deleteAllData(db: SQLiteDatabase): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.execAsync('DELETE FROM entries; DELETE FROM favourites; DELETE FROM settings;');
+    await txn.execAsync('DELETE FROM entries; DELETE FROM favourites; DELETE FROM weigh_ins; DELETE FROM settings;');
   });
   notifyChanged();
 }
