@@ -2,13 +2,14 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DATABASE_NAME, migrate } from '@/db/database';
 import { startHealthSync } from '@/health/sync';
 import { AccentProvider } from '@/ui/accent';
+import { Intro } from '@/ui/intro';
 import { color, fonts } from '@/ui/theme';
 
 const theme = {
@@ -25,6 +26,8 @@ function HealthSync() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
+  // Plays once per launch, over the app as it loads underneath.
+  const [intro, setIntro] = useState(true);
   // The splash screen stays up until the first render with content.
   if (!fontsLoaded) return null;
 
@@ -45,6 +48,7 @@ export default function RootLayout() {
             <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
             <Stack.Screen name="weigh-in" options={{ presentation: 'modal' }} />
           </Stack>
+          {intro && <Intro onDone={() => setIntro(false)} />}
           </AccentProvider>
         </SQLiteProvider>
       </ThemeProvider>
