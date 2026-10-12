@@ -1,7 +1,6 @@
-import * as Haptics from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useQuery } from '@/db/changes';
@@ -9,6 +8,7 @@ import { getReminder, setReminder } from '@/db/repo';
 import type { ReminderSettings } from '@/domain/reminder';
 import { requestReminderPermission, sendTestReminder, syncReminders } from '@/reminder/scheduler';
 import { color, radius, space, type } from './theme';
+import { Toggle } from './toggle';
 import { range, WheelPicker } from './wheel-picker';
 
 const HOURS = range(0, 23, 1);
@@ -37,7 +37,6 @@ export function ReminderSection() {
       return;
     }
     setDenied(false);
-    Haptics.selectionAsync();
     save({ ...reminder, enabled: on });
   };
 
@@ -48,13 +47,7 @@ export function ReminderSection() {
           <Text style={type.body}>Daily reminder</Text>
           <Text style={type.small}>Only if you haven&apos;t logged anything that day</Text>
         </View>
-        <Switch
-          value={reminder.enabled}
-          onValueChange={toggle}
-          trackColor={{ false: color.track, true: color.text }}
-          thumbColor={reminder.enabled ? color.bg : color.muted}
-          ios_backgroundColor={color.track}
-        />
+        <Toggle value={reminder.enabled} onValueChange={toggle} label="Daily reminder" />
       </View>
 
       {denied && (

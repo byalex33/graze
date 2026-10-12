@@ -1,12 +1,12 @@
-import * as Haptics from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Fragment, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/changes';
 import { getTodayLayout, setTodayLayout } from '@/db/repo';
 import { TODAY_SECTIONS, type TodayLayout, type TodaySection } from '@/domain/today-layout';
 import { color, radius, space, type } from './theme';
+import { Toggle } from './toggle';
 
 /** Switch the optional sections of the Today screen on and off. */
 export function TodayLayoutSection() {
@@ -17,7 +17,6 @@ export function TodayLayoutSection() {
   if (!layout) return <View style={styles.card} />;
 
   const toggle = (key: TodaySection, on: boolean) => {
-    Haptics.selectionAsync();
     const next = { ...layout, [key]: on };
     setLocal(next);
     setTodayLayout(db, next);
@@ -33,13 +32,7 @@ export function TodayLayoutSection() {
               <Text style={type.body}>{s.label}</Text>
               <Text style={type.small}>{s.detail}</Text>
             </View>
-            <Switch
-              value={layout[s.key]}
-              onValueChange={(on) => toggle(s.key, on)}
-              trackColor={{ false: color.track, true: color.text }}
-              thumbColor={layout[s.key] ? color.bg : color.muted}
-              ios_backgroundColor={color.track}
-            />
+            <Toggle value={layout[s.key]} onValueChange={(on) => toggle(s.key, on)} label={s.label} />
           </View>
         </Fragment>
       ))}
