@@ -7,6 +7,7 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-nativ
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { formatNumber } from '@/domain/entry';
+import { useAccent } from './accent';
 import { color, radius, space, type } from './theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -60,6 +61,7 @@ interface SparklineProps {
  * The dashed line is the Goal.
  */
 export function Sparkline({ values, labels, goal, title, headline, detail, format = formatNumber, unit = 'kcal', showDots = true }: SparklineProps) {
+  const accent = useAccent();
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState<number | null>(null);
   const scrubIndex = useSharedValue(-1);
@@ -135,8 +137,8 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
             <Svg width={width} height={HEIGHT}>
               <Defs>
                 <LinearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={color.text} stopOpacity={0.16} />
-                  <Stop offset="1" stopColor={color.text} stopOpacity={0} />
+                  <Stop offset="0" stopColor={accent.value} stopOpacity={0.18} />
+                  <Stop offset="1" stopColor={accent.value} stopOpacity={0} />
                 </LinearGradient>
               </Defs>
               {goal !== undefined && (
@@ -145,7 +147,7 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
               <AnimatedPath d={area} fill="url(#fill)" animatedProps={areaProps} />
               <AnimatedPath
                 d={line}
-                stroke={color.text}
+                stroke={accent.value}
                 strokeWidth={2}
                 fill="none"
                 strokeLinecap="round"
@@ -157,12 +159,12 @@ export function Sparkline({ values, labels, goal, title, headline, detail, forma
                 if (!p) return null;
                 const latest = p.i === lastIndex;
                 if (!latest && !(showDots && values.length <= 31)) return null;
-                return <Circle key={p.i} cx={p.x} cy={p.y} r={latest ? 3.5 : 1.5} fill={color.text} />;
+                return <Circle key={p.i} cx={p.x} cy={p.y} r={latest ? 3.5 : 1.5} fill={latest ? accent.value : color.soft} />;
               })}
               {active !== null && (
                 <>
                   <Line x1={PAD_X + active * step} x2={PAD_X + active * step} y1={0} y2={HEIGHT} stroke={color.faint} strokeWidth={1} />
-                  {activePoint && <Circle cx={activePoint.x} cy={activePoint.y} r={5} fill={color.bg} stroke={color.text} strokeWidth={2} />}
+                  {activePoint && <Circle cx={activePoint.x} cy={activePoint.y} r={5} fill={color.bg} stroke={accent.value} strokeWidth={2} />}
                 </>
               )}
             </Svg>

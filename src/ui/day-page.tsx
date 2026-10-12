@@ -16,6 +16,7 @@ import { DayBar } from './day-bar';
 import { Heatmap } from './heatmap';
 import { RollingNumber } from './rolling-number';
 import { Sparkline } from './sparkline';
+import { useAccent } from './accent';
 import { color, family, radius, space, type } from './theme';
 
 const TREND_DAYS = 14;
@@ -92,6 +93,7 @@ function Hero({ entries, goal, day, today, layout }: { entries: readonly Entry[]
 }
 
 function Tile({ label, value, unit, progress }: { label: string; value: number; unit: string; progress?: number }) {
+  const accent = useAccent();
   return (
     <View style={styles.tile}>
       <Text style={type.eyebrow}>{label}</Text>
@@ -101,7 +103,7 @@ function Tile({ label, value, unit, progress }: { label: string; value: number; 
       </Text>
       {progress !== undefined && (
         <View style={styles.tileTrack}>
-          <View style={[styles.tileFill, { width: `${Math.min(1, progress) * 100}%` }]} />
+          <View style={[styles.tileFill, { width: `${Math.min(1, progress) * 100}%`, backgroundColor: accent.value }]} />
         </View>
       )}
     </View>

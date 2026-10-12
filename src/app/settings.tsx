@@ -13,6 +13,7 @@ import { dayKeyOf } from '@/domain/day';
 import type { Goal } from '@/domain/entry';
 import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
+import { AppearanceSection } from '@/ui/appearance-section';
 import { HealthSection } from '@/ui/health-section';
 import { ReminderSection } from '@/ui/reminder-section';
 import { TodayLayoutSection } from '@/ui/today-layout-section';
@@ -79,6 +80,9 @@ export default function Settings() {
 
       <Text style={[type.label, styles.section]}>Daily goal</Text>
       <View style={[styles.card, { paddingVertical: space.lg }]}>{shownGoal && <GoalPicker goal={shownGoal} onChange={changeGoal} />}</View>
+
+      <Text style={[type.label, styles.section]}>Appearance</Text>
+      <AppearanceSection />
 
       <Text style={[type.label, styles.section]}>Today screen</Text>
       <TodayLayoutSection />

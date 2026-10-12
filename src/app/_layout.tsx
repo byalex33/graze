@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DATABASE_NAME, migrate } from '@/db/database';
 import { startHealthSync } from '@/health/sync';
+import { AccentProvider } from '@/ui/accent';
 import { color, fonts } from '@/ui/theme';
 
 const theme = {
@@ -31,6 +32,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
       <ThemeProvider value={theme}>
         <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate}>
+          <AccentProvider>
           <StatusBar style="light" />
           <HealthSync />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
@@ -43,6 +45,7 @@ export default function RootLayout() {
             <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
             <Stack.Screen name="weigh-in" options={{ presentation: 'modal' }} />
           </Stack>
+          </AccentProvider>
         </SQLiteProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
+import { useAccent } from './accent';
 import { color, shades } from './theme';
 
 const HEIGHT = 14;
@@ -26,6 +27,7 @@ function Segment({ left, width, tint, index }: { left: number; width: number; ti
  * When Eaten passes the Goal the bar rescales and a tick marks where the Goal was.
  */
 export function DayBar({ kcals, goal }: { kcals: readonly number[]; goal: number }) {
+  const accent = useAccent();
   const [width, setWidth] = useState(0);
   const eaten = kcals.reduce((a, b) => a + b, 0);
   const scale = Math.max(goal, eaten);
@@ -35,7 +37,9 @@ export function DayBar({ kcals, goal }: { kcals: readonly number[]; goal: number
     const left = (cursor / scale) * width;
     cursor += k;
     const w = Math.max(2, (k / scale) * width - GAP);
-    return { left, width: w, tint: shades[i % shades.length] };
+    // The newest Entry wears the accent; earlier ones alternate greys.
+    const tint = i === kcals.length - 1 ? accent.value : shades[(i + 1) % shades.length];
+    return { left, width: w, tint };
   });
 
   return (

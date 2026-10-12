@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { startOfDay, type DayKey } from '@/domain/day';
 import { heatLevel, heatmapWeeks, type DayStat } from '@/domain/stats';
+import { useAccent } from './accent';
 import { color, heat, radius, space, type } from './theme';
 
 /**
@@ -37,6 +38,9 @@ interface HeatmapProps {
  * with nothing logged: there is no streak and no score.
  */
 export function Heatmap({ stats, today, selected, weeks, onSelect }: HeatmapProps) {
+  const accent = useAccent();
+  // The busiest days wear the accent; the rest stay grey.
+  const levels = [...heat.slice(0, 4), accent.value];
   const [width, setWidth] = useState(0);
   const grid = heatmapWeeks(today, weeks);
   const entriesByDay = new Map(stats.map((s) => [s.day, s.entries]));
@@ -81,7 +85,7 @@ export function Heatmap({ stats, today, selected, weeks, onSelect }: HeatmapProp
                         }}
                         style={[
                           styles.cell,
-                          { width: cell, height: cell, backgroundColor: heat[level] },
+                          { width: cell, height: cell, backgroundColor: levels[level] },
                           day === selected && styles.selected,
                         ]}
                       />
@@ -96,8 +100,8 @@ export function Heatmap({ stats, today, selected, weeks, onSelect }: HeatmapProp
 
       <View style={styles.legend}>
         <Text style={type.small}>Less</Text>
-        {heat.map((c) => (
-          <View key={c} style={[styles.legendCell, { backgroundColor: c }]} />
+        {levels.map((c, i) => (
+          <View key={i} style={[styles.legendCell, { backgroundColor: c }]} />
         ))}
         <Text style={type.small}>More</Text>
       </View>

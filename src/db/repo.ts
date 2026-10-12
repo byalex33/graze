@@ -7,6 +7,8 @@ import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
 import { DEFAULT_TODAY_LAYOUT, type TodayLayout } from '@/domain/today-layout';
 import { defaultWeightUnit, type WeighIn, type WeightUnit } from '@/domain/weight';
 import { getLocales } from 'expo-localization';
+
+import type { AccentChoice } from '@/ui/accent';
 import type { DayStat } from '@/domain/stats';
 import { emitFirstOfDay, emitWrite, notifyChanged } from './changes';
 
@@ -223,6 +225,15 @@ export async function getTodayLayout(db: SQLiteDatabase): Promise<TodayLayout> {
 
 export async function setTodayLayout(db: SQLiteDatabase, layout: TodayLayout): Promise<void> {
   await putSetting(db, 'todayLayout', JSON.stringify(layout));
+  notifyChanged();
+}
+
+export async function getAccentChoice(db: SQLiteDatabase): Promise<AccentChoice> {
+  return ((await getSetting(db, 'accent')) as AccentChoice | null) ?? 'white';
+}
+
+export async function setAccentChoice(db: SQLiteDatabase, choice: AccentChoice): Promise<void> {
+  await putSetting(db, 'accent', choice);
   notifyChanged();
 }
 

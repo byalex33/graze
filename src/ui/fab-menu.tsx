@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatNumber, type Relog } from '@/domain/entry';
 import { BarcodeIcon, PencilIcon, PlusIcon, ScaleIcon, SearchIcon } from './icons';
+import { useAccent } from './accent';
 import { color, radius, space, type } from './theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -38,6 +39,7 @@ interface FabMenuProps {
  */
 export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn, blurTarget }: FabMenuProps) {
   const insets = useSafeAreaInsets();
+  const accent = useAccent();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
 
@@ -72,7 +74,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeig
     { key: 'weigh-in', label: 'Weigh-in', icon: <ScaleIcon size={18} />, onPress: onWeighIn },
     { key: 'search', label: 'Search', icon: <SearchIcon size={18} />, onPress: onSearch },
     { key: 'scan', label: 'Scan barcode', icon: <BarcodeIcon size={18} />, onPress: onScan },
-    { key: 'quick-add', label: 'Quick Add', icon: <PencilIcon size={18} tint={color.bg} />, onPress: onQuickAdd },
+    { key: 'quick-add', label: 'Quick Add', icon: <PencilIcon size={18} tint={accent.on} />, onPress: onQuickAdd },
   ];
 
   const bottom = insets.bottom + space.lg;
@@ -110,7 +112,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeig
                   onPress={() => choose(a.onPress)}
                   style={({ pressed }) => [
                     styles.action,
-                    a.key === 'quick-add' && styles.primaryAction,
+                    a.key === 'quick-add' && { backgroundColor: accent.value, borderColor: accent.value },
                     a.key === 'weigh-in' && recents.length > 0 && styles.firstTool,
                     pressed && styles.pressed,
                   ]}
@@ -118,7 +120,7 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeig
                   {a.icon}
                   <Text
                     numberOfLines={1}
-                    style={[type.bodyStrong, a.key === 'quick-add' && { color: color.bg }, styles.actionLabel]}
+                    style={[type.bodyStrong, a.key === 'quick-add' && { color: accent.on }, styles.actionLabel]}
                   >
                     {a.label}
                   </Text>
@@ -133,9 +135,9 @@ export function FabMenu({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeig
         accessibilityRole="button"
         accessibilityLabel={open ? 'Close menu' : 'Log something'}
         onPress={toggle}
-        style={[styles.fab, { bottom }, fabStyle]}
+        style={[styles.fab, { bottom, backgroundColor: accent.value }, fabStyle]}
       >
-        <PlusIcon tint={color.bg} size={26} />
+        <PlusIcon tint={accent.on} size={26} />
       </AnimatedPressable>
     </>
   );
@@ -158,7 +160,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: color.hairline,
   },
-  primaryAction: { backgroundColor: color.text, borderColor: color.text },
   firstTool: { marginTop: space.md },
   actionLabel: { flexShrink: 1 },
   pressed: { opacity: 0.7 },

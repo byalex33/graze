@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { useAccent } from './accent';
 import { color } from './theme';
 
 const WIDTH = 50;
@@ -15,6 +16,7 @@ const INSET = (HEIGHT - THUMB) / 2;
  * version and never quite lines up with text; this one is the same everywhere.
  */
 export function Toggle({ value, onValueChange, label }: { value: boolean; onValueChange: (on: boolean) => void; label: string }) {
+  const accent = useAccent();
   const on = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
@@ -22,11 +24,11 @@ export function Toggle({ value, onValueChange, label }: { value: boolean; onValu
   }, [value, on]);
 
   const track = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], [color.track, color.text]),
+    backgroundColor: interpolateColor(on.value, [0, 1], [color.track, accent.value]),
   }));
   const thumb = useAnimatedStyle(() => ({
     transform: [{ translateX: on.value * (WIDTH - THUMB - INSET * 2) }],
-    backgroundColor: interpolateColor(on.value, [0, 1], [color.muted, color.bg]),
+    backgroundColor: interpolateColor(on.value, [0, 1], [color.muted, accent.on]),
   }));
 
   return (
