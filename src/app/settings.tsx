@@ -13,6 +13,7 @@ import { dayKeyOf } from '@/domain/day';
 import type { Goal } from '@/domain/entry';
 import { GoalPicker } from '@/ui/goal-picker';
 import { ChevronIcon } from '@/ui/icons';
+import { AccentToast } from '@/ui/accent-toast';
 import { AppearanceSection } from '@/ui/appearance-section';
 import { HealthSection } from '@/ui/health-section';
 import { ReminderSection } from '@/ui/reminder-section';
@@ -69,6 +70,7 @@ export default function Settings() {
     );
 
   return (
+    <View style={styles.screen}>
     <ScrollView style={styles.screen} contentContainerStyle={[styles.body, { paddingTop: Platform.OS === 'android' ? insets.top + space.lg : space.lg, paddingBottom: insets.bottom + space.xxl }]}>
       <View style={styles.header}>
         <Pressable hitSlop={12} onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -101,6 +103,8 @@ export default function Settings() {
       </View>
       <Text style={[type.small, styles.note]}>Graze keeps everything on this phone. Deleting the app deletes your data, so export first.</Text>
     </ScrollView>
+    <AccentToast />
+    </View>
   );
 }
 

@@ -11,6 +11,7 @@ import { addDays, dayLabel, daysBetween, eatenAtFor, startOfDay, type DayKey } f
 import type { Relog } from '@/domain/entry';
 import { rankRecents } from '@/domain/recents';
 import { syncReminders } from '@/reminder/scheduler';
+import { AccentToast } from '@/ui/accent-toast';
 import { Celebration } from '@/ui/celebration';
 import { DayPage, HEATMAP_WEEKS } from '@/ui/day-page';
 import { FabMenu } from '@/ui/fab-menu';
@@ -137,6 +138,7 @@ export default function Today() {
         onWeighIn={() => router.push('/weigh-in')}
         blurTarget={blurTarget}
       />
+      <AccentToast offset={76} />
       {celebrating && <Celebration onDone={() => setCelebrating(false)} />}
     </View>
   );

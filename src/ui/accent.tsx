@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, AppState } from 'react-native';
 
 import { useQuery } from '@/db/changes';
 import { getAccentChoice } from '@/db/repo';
@@ -25,7 +25,16 @@ export function pickRandomAccent(previous: AccentName | null, rand: () => number
   return pool[Math.floor(rand() * pool.length)];
 }
 
+/** A short-lived note that the colour changed, shown by AccentToast. */
+export interface AccentNotice {
+  id: number;
+  name: AccentName;
+  /** False while it fades out; the text stays until then. */
+  visible: boolean;
+}
+
 interface Accent {
+  notice: AccentNotice | null;
   choice: AccentChoice;
   /** The colour actually shown; for Random, this opening's pick. */
   name: AccentName;
@@ -34,13 +43,14 @@ interface Accent {
   on: string;
 }
 
-const AccentContext = createContext<Accent>({ choice: 'white', name: 'white', value: color.text, on: color.bg });
+const AccentContext = createContext<Accent>({ notice: null, choice: 'white', name: 'white', value: color.text, on: color.bg });
 
 export const useAccent = () => useContext(AccentContext);
 
 /** Supplies the accent colour. Random re-rolls each time the app comes back to the foreground. */
 export function AccentProvider({ children }: { children: ReactNode }) {
-  const choice = useQuery(getAccentChoice, []) ?? 'white';
+  const saved = useQuery(getAccentChoice, []);
+  const choice = saved ?? 'white';
   const [randomPick, setRandomPick] = useState<AccentName>(() => pickRandomAccent(null));
 
   useEffect(() => {
@@ -53,8 +63,25 @@ export function AccentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const name = choice === 'random' ? randomPick : choice;
+
+  // Announce a change of colour, but not the setting loading at launch, unless it's
+  // Random, whose pick is news every time.
+  const [notice, setNotice] = useState<AccentNotice | null>(null);
+  const shown = useRef<AccentName | null>(null);
+  useEffect(() => {
+    if (saved === undefined) return;
+    const first = shown.current === null;
+    const changed = shown.current !== name;
+    shown.current = name;
+    if (!changed || (first && saved !== 'random')) return;
+    setNotice({ id: Date.now(), name, visible: true });
+    AccessibilityInfo.announceForAccessibility(`Colour changed to ${ACCENTS[name].name}`);
+    const t = setTimeout(() => setNotice((n) => n && { ...n, visible: false }), 2400);
+    return () => clearTimeout(t);
+  }, [saved, name]);
+
   return (
-    <AccentContext.Provider value={{ choice, name, value: ACCENTS[name].value, on: color.bg }}>
+    <AccentContext.Provider value={{ notice, choice, name, value: ACCENTS[name].value, on: color.bg }}>
       {children}
     </AccentContext.Provider>
   );
