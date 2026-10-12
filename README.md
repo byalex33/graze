@@ -10,7 +10,7 @@ I was paying £50 a year for a calorie app. For that I got a notification every 
 
 All I ever did in it was type a number and check how much I had left. That shouldn't cost £50 a year, and it definitely shouldn't need to message me about it.
 
-So I built Graze for me and a mate. It's free, there's no account, and it never sends you a notification unless you turn one on yourself.
+So I built Graze. It's free, there's no account, and it never sends you a notification unless you turn one on yourself.
 
 ## What it does
 
