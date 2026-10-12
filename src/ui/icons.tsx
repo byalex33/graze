@@ -167,3 +167,12 @@ export function CalendarIcon({ size = 22, tint = color.muted }: IconProps) {
     </Svg>
   );
 }
+
+export function ClockIcon({ size = 20, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={8} {...stroke(tint)} />
+      <Path d="M12 7.5V12l3 2" {...stroke(tint)} />
+    </Svg>
+  );
+}

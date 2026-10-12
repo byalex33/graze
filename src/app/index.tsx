@@ -14,7 +14,7 @@ import { syncReminders } from '@/reminder/scheduler';
 import { AccentToast } from '@/ui/accent-toast';
 import { Celebration } from '@/ui/celebration';
 import { DayPage, HEATMAP_WEEKS } from '@/ui/day-page';
-import { FabMenu } from '@/ui/fab-menu';
+import { Dock } from '@/ui/dock';
 import { clearGoToDay, onGoToDay } from '@/ui/day-nav';
 import { CalendarIcon, GearIcon } from '@/ui/icons';
 import { color, space, type } from '@/ui/theme';
@@ -153,14 +153,13 @@ export default function Today() {
           )}
         />
       </BlurTargetView>
-      <FabMenu
+      <Dock
         recents={recents}
         onRelog={relog}
         onQuickAdd={() => router.push({ pathname: '/entry', params: { day: viewedDay } })}
         onSearch={() => router.push({ pathname: '/search', params: { day: viewedDay } })}
         onScan={() => router.push({ pathname: '/scan', params: { day: viewedDay } })}
         onWeighIn={() => router.push('/weigh-in')}
-        blurTarget={blurTarget}
       />
       <AccentToast offset={76} />
       {celebrating && <Celebration onDone={() => setCelebrating(false)} />}
