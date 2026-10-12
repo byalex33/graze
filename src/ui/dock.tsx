@@ -21,7 +21,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { formatNumber, type Relog } from '@/domain/entry';
 import { useAccent } from './accent';
 import { BarcodeIcon, ClockIcon, PlusIcon, ScaleIcon, SearchIcon } from './icons';
-import { color, radius, space, type } from './theme';
+import { color, family, radius, space, type } from './theme';
 
 const SIZE = 50;
 const GAP = 10;
@@ -53,8 +53,10 @@ function DockButton({
   bounce: SharedValue<number>;
   accent: { value: string; on: string };
 }) {
+  // Worked out here, on the JS thread; the style below runs on the UI thread and can only use plain values.
+  const centre = centreOf(index);
   const style = useAnimatedStyle(() => {
-    const near = finger.value < 0 ? 0 : Math.max(0, 1 - Math.abs(finger.value - centreOf(index)) / REACH);
+    const near = finger.value < 0 ? 0 : Math.max(0, 1 - Math.abs(finger.value - centre) / REACH);
     // Ease the falloff so the icon under the finger leads and its neighbours follow.
     const swell = withSpring(1 + SWELL * near * near, { damping: 16, stiffness: 260 });
     return { transform: [{ translateY: bounce.value - (near * near * SIZE * SWELL) / 2 }, { scale: swell }] };
@@ -83,7 +85,6 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
   const insets = useSafeAreaInsets();
   const accent = useAccent();
   const [recentOpen, setRecentOpen] = useState(false);
-  const [hovered, setHovered] = useState<number | null>(null);
 
   const items: DockItem[] = [
     { key: 'recent', label: 'Recent', icon: (t) => <ClockIcon size={21} tint={t} />, onPress: () => setRecentOpen((o) => !o) },
@@ -109,24 +110,30 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
     // Two hops, the second smaller, like an app launching from the Dock.
     b.set(withSequence(withTiming(-16, { duration: 140 }), withSpring(0, { damping: 7, stiffness: 300 }), withTiming(-7, { duration: 100 }), withSpring(0, { damping: 9, stiffness: 300 })));
     const item = items[i];
-    setTimeout(item.onPress, item.key === 'recent' ? 0 : 160);
     if (item.key !== 'recent') setRecentOpen(false);
+    item.onPress();
   };
 
-  const hover = (i: number | null) => {
-    if (i !== null) Haptics.selectionAsync();
-    setHovered(i);
-  };
+  const tick = () => Haptics.selectionAsync();
 
   useAnimatedReaction(
     () => (finger.value < 0 ? -1 : indexAt(finger.value)),
     (i, prev) => {
-      if (i !== prev) scheduleOnRN(hover, i < 0 ? null : i);
+      if (i !== prev && i >= 0) scheduleOnRN(tick);
     },
   );
 
-  const pan = Gesture.Pan()
-    .minDistance(0)
+  // A tap opens straight away. A slide swells the icons under the finger and opens the one
+  // you lift off. Touch-down starts the swell either way, so it feels immediate.
+  const tap = Gesture.Tap()
+    .maxDistance(12)
+    .onEnd((e, success) => {
+      const i = indexAt(e.x);
+      if (success && i >= 0) scheduleOnRN(launch, i);
+    });
+
+  const slide = Gesture.Pan()
+    .minDistance(12)
     .onBegin((e) => {
       finger.set(e.x);
     })
@@ -141,6 +148,8 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
       finger.set(-1);
     });
 
+  const gesture = Gesture.Simultaneous(slide, tap);
+
   const bottom = insets.bottom + space.md;
 
   return (
@@ -154,7 +163,7 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
         <Animated.View
           entering={FadeInDown.springify().damping(18)}
           exiting={FadeOutDown.duration(140)}
-          style={[styles.recents, { bottom: bottom + SIZE + PAD * 2 + space.md }]}
+          style={[styles.recents, { bottom: bottom + SIZE + PAD * 2 + 18 + space.md }]}
         >
           <Text style={[type.eyebrow, { marginLeft: space.sm, marginBottom: 2 }]}>Recent</Text>
           {recents.length === 0 && <Text style={[type.label, styles.recentEmpty]}>Things you log show up here.</Text>}
@@ -177,19 +186,7 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
         </Animated.View>
       )}
 
-      {hovered !== null && (
-        <View pointerEvents="none" style={[styles.labelWrap, { bottom: bottom + SIZE + PAD * 2 + 26, width }]}>
-          <View style={[styles.label, { left: centreOf(hovered) - 60 }]}>
-            <View style={styles.labelPill}>
-              <Text style={[type.small, { color: color.text }]} numberOfLines={1}>
-                {items[hovered].label}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      <GestureDetector gesture={pan}>
+      <GestureDetector gesture={gesture}>
         <View
           style={[styles.dock, { bottom, width }]}
           accessibilityRole="toolbar"
@@ -203,9 +200,12 @@ export function Dock({ recents, onRelog, onQuickAdd, onSearch, onScan, onWeighIn
               accessibilityLabel={item.label}
               accessibilityRole="button"
               onAccessibilityTap={() => launch(i)}
-              style={{ width: SIZE, height: SIZE }}
+              style={styles.slot}
             >
               <DockButton item={item} index={i} finger={finger} bounce={bounces[i]} accent={accent} />
+              <Text style={styles.caption} numberOfLines={1}>
+                {item.label}
+              </Text>
             </View>
           ))}
         </View>
@@ -221,7 +221,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: GAP,
     padding: PAD,
-    borderRadius: radius.pill,
+    paddingBottom: PAD - 2,
+    borderRadius: 34,
     backgroundColor: 'rgba(17,17,17,0.94)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: color.hairline,
@@ -232,16 +233,8 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   button: { width: SIZE, height: SIZE, borderRadius: SIZE / 2, alignItems: 'center', justifyContent: 'center' },
-  labelWrap: { position: 'absolute', alignSelf: 'center', height: 28 },
-  label: { position: 'absolute', width: 120, alignItems: 'center' },
-  labelPill: {
-    paddingHorizontal: space.md,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    backgroundColor: color.cardRaised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: color.hairline,
-  },
+  slot: { width: SIZE, alignItems: 'center', gap: 4 },
+  caption: { color: color.muted, fontFamily: family.medium, fontSize: 10, width: SIZE + GAP, textAlign: 'center' },
   recents: {
     position: 'absolute',
     alignSelf: 'center',
