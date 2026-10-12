@@ -36,7 +36,7 @@ So I built Graze. It's free, there's no account, and it never sends you a notifi
 
 ### Android
 
-1. Download `graze-x.y.z.apk` from [Releases](../../releases) on your phone (the first one is on its way)
+1. On your phone, download the newest APK from [Releases](../../releases)
 2. Open it. Android will ask you to allow installs from your browser; allow it
 3. If Play Protect says it doesn't recognise the app, tap **More details → Install anyway**. It warns about anything that isn't from the Play Store
 
@@ -61,7 +61,7 @@ You'll need Xcode, Developer Mode turned on on the phone, and your Apple ID adde
 - [x] The one optional reminder
 - [x] Apple Health and Health Connect: calories burned, weigh-ins, and saving what you log
 - [x] Weight trend
-- [ ] First Android release
+- [x] First Android release (0.1.0, a pre-release while barcode scanning gets tested on real phones)
 
 ## Where the food data comes from
 
