@@ -2,7 +2,7 @@
   "expo": {
     "name": "Graze",
     "slug": "graze",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "graze",
@@ -23,7 +23,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_BASAL_METABOLIC_RATE",
@@ -88,6 +88,21 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9024e852-2d85-40cc-9944-ac98df58b7e7"
+      }
+    },
+    "owner": "alexdotcodes",
+    "updates": {
+      "url": "https://u.expo.dev/9024e852-2d85-40cc-9944-ac98df58b7e7",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
     }
   }
 }
