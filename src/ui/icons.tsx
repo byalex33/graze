@@ -152,6 +152,14 @@ export function CheckIcon({ size = 20, tint = color.text }: IconProps) {
   );
 }
 
+export function SwapIcon({ size = 16, tint = color.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4" {...stroke(tint)} />
+    </Svg>
+  );
+}
+
 export function CalendarIcon({ size = 22, tint = color.muted }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

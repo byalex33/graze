@@ -12,7 +12,7 @@ import { formatNumber } from '@/domain/entry';
 import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, withUnit, type Food, type Portion, type Unit } from '@/domain/food';
 import { lookupBarcode } from '@/food/open-food-facts';
 import { foodById, rememberFood } from '@/food/registry';
-import { StarIcon } from '@/ui/icons';
+import { StarIcon, SwapIcon } from '@/ui/icons';
 import { RollingNumber } from '@/ui/rolling-number';
 import { color, family, radius, space, type } from '@/ui/theme';
 import { useOnce } from '@/ui/use-once';
@@ -142,8 +142,14 @@ export default function FoodScreen() {
               {formatNumber(food.per100.kcal)} kcal per 100 {food.unit}
               {food.id.startsWith('cofid:') ? ' · UK generic' : ''}
             </Text>
-            <Pressable onPress={switchUnit} hitSlop={8} style={styles.unitChip}>
-              <Text style={type.small}>{food.unit === 'g' ? 'It’s a drink' : 'It’s food'}</Text>
+            <Pressable
+              onPress={switchUnit}
+              hitSlop={8}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.unitButton, pressed && styles.unitButtonPressed]}
+            >
+              <SwapIcon size={13} tint={color.soft} />
+              <Text style={[type.small, { color: color.soft }]}>Measure in {food.unit === 'g' ? 'ml' : 'g'}</Text>
             </Pressable>
           </View>
         </View>
@@ -240,7 +246,16 @@ const styles = StyleSheet.create({
   macro: { flex: 1, backgroundColor: color.card, borderRadius: radius.md, padding: space.md, gap: 6 },
   macroValue: { ...type.number, fontSize: 20, letterSpacing: -0.8 },
   perRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
-  unitChip: { paddingHorizontal: space.sm, paddingVertical: 3, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: color.faint },
+  unitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: color.cardRaised,
+  },
+  unitButtonPressed: { backgroundColor: color.faint },
   segmented: { flexDirection: 'row', backgroundColor: color.card, borderRadius: radius.pill, padding: 4 },
   segment: { flex: 1, alignItems: 'center', paddingVertical: space.sm, borderRadius: radius.pill },
   segmentOn: { backgroundColor: color.text },
