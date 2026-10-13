@@ -1,4 +1,3 @@
-import { BlurTargetView } from 'expo-blur';
 import { Redirect, router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,7 +35,6 @@ export default function Today() {
   const today = useToday();
   const [index, setIndex] = useState(0);
   const list = useRef<FlatList<DayKey>>(null);
-  const blurTarget = useRef<View>(null);
 
   const goal = useQuery(getGoal, []);
   const dataVersion = useDataVersion();
@@ -107,7 +105,7 @@ export default function Today() {
 
   return (
     <View style={styles.screen}>
-      <BlurTargetView ref={blurTarget} style={styles.screen}>
+      <View style={styles.screen}>
         <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
           <View style={styles.headerLeft}>
             <Pressable
@@ -152,7 +150,7 @@ export default function Today() {
             />
           )}
         />
-      </BlurTargetView>
+      </View>
       <Dock
         recents={recents}
         onRelog={relog}

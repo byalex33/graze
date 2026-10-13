@@ -35,13 +35,6 @@ export function GearIcon({ size = 22, tint = color.muted }: IconProps) {
   );
 }
 
-export function PencilIcon({ size = 20, tint = color.text }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" {...stroke(tint)} />
-    </Svg>
-  );
-}
 
 export function StarIcon({ size = 22, tint = color.text, filled = false }: IconProps & { filled?: boolean }) {
   return (

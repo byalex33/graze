@@ -20,8 +20,7 @@ export const color = {
   danger: '#FF6B6B',
 } as const;
 
-/** Greys used to tell neighbouring things apart without colour (bar segments, heatmap levels). */
-export const shades = ['#FAFAFA', '#C9C9C9', '#9A9A9A', '#6E6E6E'] as const;
+/** Heatmap levels, from nothing logged to the busiest days. */
 export const heat = ['#161616', '#3A3A3A', '#6E6E6E', '#B0B0B0', '#FAFAFA'] as const;
 
 export const fonts = {
