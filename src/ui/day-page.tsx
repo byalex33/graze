@@ -12,7 +12,7 @@ import { formatNumber, totalsOf, type Entry, type Goal } from '@/domain/entry';
 import { averageLogged, series, type DayStat } from '@/domain/stats';
 import { formatWeight, formatWeightChange, weightTrend } from '@/domain/weight';
 import { useBurned, useWeighIns } from '@/health/use-health';
-import { DayBar } from './day-bar';
+import { Rings } from './rings';
 import { Heatmap } from './heatmap';
 import { RollingNumber } from './rolling-number';
 import { Sparkline } from './sparkline';
@@ -22,22 +22,6 @@ import { color, family, radius, space, type } from './theme';
 const TREND_DAYS = 14;
 const WEIGHT_DAYS = 30;
 export const HEATMAP_WEEKS = 20;
-
-/** "620 burned so far" today; "2,340 burned · Net −340" for Completed Days with resting energy. */
-function BurnedLine({ day, today, eaten }: { day: DayKey; today: DayKey; eaten: number }) {
-  const burned = useBurned(day);
-  if (!burned) return null;
-  const total = burned.active + (burned.resting ?? 0);
-  const completed = day < today;
-  const net = Math.round(eaten - total);
-  let text: string;
-  if (!completed) text = `${formatNumber(total)} burned so far`;
-  else if (burned.resting === null) text = `${formatNumber(burned.active)} active burned`;
-  else text = `${formatNumber(total)} burned · Net ${net < 0 ? '−' : '+'}${formatNumber(Math.abs(net))}`;
-  return (
-    <Text style={[type.small, styles.burned]}>{text}</Text>
-  );
-}
 
 function WeightCard({ day, today }: { day: DayKey; today: DayKey }) {
   const unit = useQuery(getWeightUnit, []);
@@ -68,44 +52,64 @@ function WeightCard({ day, today }: { day: DayKey; today: DayKey }) {
   );
 }
 
-function Hero({ entries, goal, day, today, layout }: { entries: readonly Entry[]; goal: Goal; day: DayKey; today: DayKey; layout: TodayLayout }) {
+/** The burned part of the summary line: "620 burned" today, "2,340 burned · Net −340" once the Day is over. */
+function useBurnedText(day: DayKey, today: DayKey, eaten: number): string | null {
+  const burned = useBurned(day);
+  if (!burned) return null;
+  const total = burned.active + (burned.resting ?? 0);
+  if (day >= today) return `${formatNumber(total)} burned`;
+  if (burned.resting === null) return `${formatNumber(burned.active)} active`;
+  const net = Math.round(eaten - total);
+  return `${formatNumber(total)} burned · Net ${net < 0 ? '−' : '+'}${formatNumber(Math.abs(net))}`;
+}
+
+/**
+ * Calories left inside two rings (calories outside in the accent colour, protein inside),
+ * a legend for both, then carbs, fat and what was burned.
+ */
+function Hero({ entries, goal, day, today, layout, width }: { entries: readonly Entry[]; goal: Goal; day: DayKey; today: DayKey; layout: TodayLayout; width: number }) {
+  const accent = useAccent();
   const t = totalsOf(entries);
   const left = Math.round(goal.kcal - t.kcal);
   const over = left < 0;
+  const burned = useBurnedText(day, today, t.kcal);
+  const size = Math.min(width - space.xxl * 2.5, 300);
+
+  const details = [
+    layout.macros ? `${formatNumber(t.carbs)} g carbs` : null,
+    layout.macros ? `${formatNumber(t.fat)} g fat` : null,
+    layout.burned ? burned : null,
+  ].filter(Boolean);
+
   return (
     <View style={styles.hero}>
-      <Text style={type.eyebrow}>{over ? 'Over' : 'Left'}</Text>
-      <View style={styles.heroNumber}>
-        <RollingNumber value={Math.abs(left)} style={type.hero} />
-        <Text style={styles.heroUnit}>kcal</Text>
-      </View>
-      <Text style={type.small}>
-        {formatNumber(t.kcal)} eaten · {formatNumber(goal.kcal)} goal
-      </Text>
-      {layout.dayBar && (
-        <View style={{ marginTop: space.lg }}>
-          <DayBar kcals={entries.map((e) => e.kcal)} goal={goal.kcal} />
-        </View>
-      )}
-      {layout.burned && <BurnedLine day={day} today={today} eaten={t.kcal} />}
-    </View>
-  );
-}
+      <Rings
+        size={size}
+        outer={{ progress: t.kcal / goal.kcal, tint: accent.value }}
+        inner={{ progress: t.protein / goal.protein, tint: color.soft }}
+      >
+        <Text style={type.eyebrow}>{over ? 'Over' : 'Left'}</Text>
+        <RollingNumber value={Math.abs(left)} style={styles.ringNumber} />
+        <Text style={[type.small, { fontSize: 14 }]}>kcal</Text>
+      </Rings>
 
-function Tile({ label, value, unit, progress }: { label: string; value: number; unit: string; progress?: number }) {
-  const accent = useAccent();
-  return (
-    <View style={styles.tile}>
-      <Text style={type.eyebrow}>{label}</Text>
-      <Text style={styles.tileValue}>
-        {formatNumber(value)}
-        <Text style={type.small}> {unit}</Text>
-      </Text>
-      {progress !== undefined && (
-        <View style={styles.tileTrack}>
-          <View style={[styles.tileFill, { width: `${Math.min(1, progress) * 100}%`, backgroundColor: accent.value }]} />
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: accent.value }]} />
+          <Text style={type.number}>
+            {formatNumber(t.kcal)}
+            <Text style={type.small}> / {formatNumber(goal.kcal)}</Text>
+          </Text>
         </View>
-      )}
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: color.soft }]} />
+          <Text style={type.number}>
+            {formatNumber(t.protein)}
+            <Text style={type.small}> / {goal.protein} g protein</Text>
+          </Text>
+        </View>
+      </View>
+      {details.length > 0 && <Text style={[type.small, styles.details]}>{details.join(' · ')}</Text>}
     </View>
   );
 }
@@ -171,7 +175,6 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
   const layout = useQuery(getTodayLayout, []) ?? DEFAULT_TODAY_LAYOUT;
   if (!entries) return <View style={{ width }} />;
 
-  const t = totalsOf(entries);
   const trend = series(stats, day, TREND_DAYS);
   const thisWeek = averageLogged(trend.slice(-7));
   const lastWeek = averageLogged(trend.slice(0, 7));
@@ -184,15 +187,8 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
 
   return (
     <ScrollView style={{ width }} contentContainerStyle={[styles.page, { paddingBottom: bottomInset }]}>
-      <Hero entries={entries} goal={goal} day={day} today={today} layout={layout} />
+      <Hero entries={entries} goal={goal} day={day} today={today} layout={layout} width={width} />
 
-      {layout.macros && (
-        <View style={styles.tiles}>
-          <Tile label="Protein" value={t.protein} unit={`/ ${goal.protein} g`} progress={t.protein / goal.protein} />
-          <Tile label="Carbs" value={t.carbs} unit="g" />
-          <Tile label="Fat" value={t.fat} unit="g" />
-        </View>
-      )}
 
       {entries.length === 0 ? (
         <View style={[styles.card, styles.empty]}>
@@ -230,7 +226,12 @@ export function DayPage({ day, today, goal, stats, width, bottomInset, onSelectD
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: space.lg, gap: space.md },
-  hero: { paddingTop: space.md, paddingBottom: space.sm },
+  hero: { alignItems: 'center', paddingTop: space.lg, paddingBottom: space.md, gap: space.lg },
+  ringNumber: { ...type.hero, fontSize: 58, letterSpacing: -2.6 },
+  legend: { flexDirection: 'row', gap: space.xl, justifyContent: 'center' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  details: { marginTop: -space.sm, textAlign: 'center' },
   heroNumber: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, marginVertical: space.xs },
   heroUnit: { ...type.small, fontSize: 15, marginBottom: 12 },
   burned: { marginTop: space.sm },

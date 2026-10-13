@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { dayKeyOf, type DayKey } from '@/domain/day';
+import { dayKeyOf, notInFuture, type DayKey } from '@/domain/day';
 import { signatureOf, type Entry, type Goal, type Nutrition, type Relog } from '@/domain/entry';
 import type { Unit } from '@/domain/food';
 import { DEFAULT_REMINDER, type ReminderSettings } from '@/domain/reminder';
@@ -78,7 +78,8 @@ export interface NewEntry extends Nutrition {
   portion: string | null;
 }
 
-export async function addEntry(db: SQLiteDatabase, e: NewEntry): Promise<string> {
+export async function addEntry(db: SQLiteDatabase, entry: NewEntry): Promise<string> {
+  const e = { ...entry, ...notInFuture(entry.day, entry.eatenAt) };
   const id = newId();
   const now = Date.now();
   await db.runAsync(

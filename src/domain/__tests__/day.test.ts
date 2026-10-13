@@ -1,4 +1,4 @@
-import { addDays, dayKeyOf, dayLabel, daysBetween, eatenAtFor } from '../day';
+import { addDays, dayKeyOf, dayLabel, daysBetween, eatenAtFor, notInFuture } from '../day';
 
 describe('Day', () => {
   it('belongs to the local calendar date, so a 00:40 snack is the new Day', () => {
@@ -37,5 +37,24 @@ describe('eatenAtFor', () => {
     const at = eatenAtFor('2026-10-11', now);
     expect(dayKeyOf(at)).toBe('2026-10-11');
     expect([at.getHours(), at.getMinutes()]).toEqual([19, 30]);
+  });
+});
+
+describe('notInFuture', () => {
+  const now = new Date(2026, 9, 13, 0, 5);
+
+  it('leaves today and the past alone', () => {
+    const past = new Date(2026, 9, 12, 19, 0).getTime();
+    expect(notInFuture('2026-10-12', past, now)).toEqual({ day: '2026-10-12', eatenAt: past });
+  });
+
+  it('pulls a future Day back to today, at now', () => {
+    const later = new Date(2026, 9, 14, 9, 0).getTime();
+    expect(notInFuture('2026-10-14', later, now)).toEqual({ day: '2026-10-13', eatenAt: now.getTime() });
+  });
+
+  it('pulls a time later today back to now', () => {
+    const tonight = new Date(2026, 9, 13, 23, 0).getTime();
+    expect(notInFuture('2026-10-13', tonight, now)).toEqual({ day: '2026-10-13', eatenAt: now.getTime() });
   });
 });

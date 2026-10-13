@@ -60,13 +60,16 @@ function MonthBlock({ month, logged, today, selected, oldest }: MonthProps) {
                 style={styles.cell}
               >
                 {({ pressed }) => (
+                  // Never flattened, and opacity always set: on Android, a press changing whether
+                  // this view gets flattened, while the sheet is closing, crashed the app.
                   <View
+                    collapsable={false}
                     style={[
                       styles.dot,
                       isLogged && { backgroundColor: accent.value },
                       isToday && !isLogged && { borderWidth: 1.5, borderColor: color.muted },
                       isSelected && styles.selected,
-                      pressed && { opacity: 0.6 },
+                      { opacity: pressed ? 0.6 : 1 },
                     ]}
                   >
                     <Text

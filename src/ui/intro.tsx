@@ -111,7 +111,7 @@ function Letter({ ch, index, start }: { ch: string; index: number; start: Shared
  * The launch intro: foods swoop into the strawberry, which grows with each one, "Graze"
  * springs up, then a circle opens from the strawberry onto the app. About 2.6 s; tap to skip.
  */
-export function Intro({ onDone }: { onDone: () => void }) {
+export function Intro() {
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const [flights] = useState(() => plan(width, height));
@@ -119,6 +119,10 @@ export function Intro({ onDone }: { onDone: () => void }) {
   // Once the circle starts opening the intro must never catch a touch, and it must go
   // away even if the animation's own "finished" callback never arrives.
   const [revealing, setRevealing] = useState(false);
+  // The intro hides itself when it's finished. It used to be removed by its parent, but on
+  // Android that update never reached it and it stayed, invisible, over the whole app.
+  const [hidden, setHidden] = useState(false);
+  const onDone = () => setHidden(true);
 
   const grow = useSharedValue(1);
   const gulp = useSharedValue(0);
@@ -205,7 +209,12 @@ export function Intro({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, overlay]} pointerEvents={revealing ? 'none' : 'auto'}>
+    <Animated.View
+      style={[StyleSheet.absoluteFill, overlay, hidden && styles.gone]}
+      pointerEvents={revealing || hidden ? 'none' : 'auto'}
+      accessibilityElementsHidden={revealing || hidden}
+      importantForAccessibility={revealing || hidden ? 'no-hide-descendants' : 'auto'}
+    >
       <Pressable style={StyleSheet.absoluteFill} onPress={skip} disabled={revealing} accessibilityLabel="Skip intro">
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <AnimatedPath animatedProps={holeProps} fill={color.bg} fillRule="evenodd" />
@@ -243,6 +252,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  gone: { display: 'none' },
   centre: { position: 'absolute', width: 0, height: 0, alignItems: 'center', justifyContent: 'center' },
   art: { position: 'absolute', width: ART, height: ART },
   layer: { position: 'absolute', width: ART, height: ART },

@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -6,36 +7,24 @@ import { color } from './theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-interface RingProps {
-  size: number;
-  stroke: number;
-  /** 0..1; anything above 1 shows a full ring. */
-  progress: number;
-  tint: string;
-}
-
-function Ring({ size, stroke, progress, tint }: RingProps) {
+function Ring({ box, size, stroke, progress, tint }: { box: number; size: number; stroke: number; progress: number; tint: string }) {
   const r = (size - stroke) / 2;
+  const c = box / 2;
   const circumference = 2 * Math.PI * r;
   const shown = useSharedValue(0);
 
   useEffect(() => {
-    shown.value = withTiming(Math.min(Math.max(progress, 0), 1), {
-      duration: 700,
-      easing: Easing.out(Easing.cubic),
-    });
+    shown.set(withTiming(Math.min(Math.max(progress, 0), 1), { duration: 800, easing: Easing.out(Easing.cubic) }));
   }, [progress, shown]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - shown.value),
-  }));
+  const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: circumference * (1 - shown.value) }));
 
   return (
     <>
-      <Circle cx={size / 2} cy={size / 2} r={r} stroke={color.track} strokeWidth={stroke} fill="none" />
+      <Circle cx={c} cy={c} r={r} stroke={color.track} strokeWidth={stroke} fill="none" />
       <AnimatedCircle
-        cx={size / 2}
-        cy={size / 2}
+        cx={c}
+        cy={c}
         r={r}
         stroke={tint}
         strokeWidth={stroke}
@@ -43,29 +32,41 @@ function Ring({ size, stroke, progress, tint }: RingProps) {
         fill="none"
         strokeDasharray={`${circumference} ${circumference}`}
         animatedProps={animatedProps}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        transform={`rotate(-90 ${c} ${c})`}
       />
     </>
   );
 }
 
 interface RingsProps {
-  size?: number;
-  kcalProgress: number;
-  proteinProgress: number;
+  size: number;
+  /** Outer ring: calories against the Goal. */
+  outer: { progress: number; tint: string };
+  /** Inner ring: protein against the Goal. */
+  inner: { progress: number; tint: string };
+  /** Shown in the middle. */
+  children?: ReactNode;
 }
 
-/** Outer ring: calories against the Goal. Inner ring: protein against the Goal. */
-export function Rings({ size = 132, kcalProgress, proteinProgress }: RingsProps) {
-  const stroke = 12;
-  const gap = 6;
-  const inner = size - 2 * (stroke + gap);
+/** Two concentric progress rings with something in the middle. */
+export function Rings({ size, outer, inner, children }: RingsProps) {
+  const outerStroke = Math.round(size * 0.068);
+  const innerStroke = Math.round(size * 0.05);
+  const gap = Math.round(size * 0.03);
+  const innerSize = size - 2 * (outerStroke + gap);
   return (
-    <Svg width={size} height={size}>
-      <Ring size={size} stroke={stroke} progress={kcalProgress} tint={color.text} />
-      <Svg x={stroke + gap} y={stroke + gap} width={inner} height={inner}>
-        <Ring size={inner} stroke={stroke} progress={proteinProgress} tint={color.muted} />
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        <Ring box={size} size={size} stroke={outerStroke} progress={outer.progress} tint={outer.tint} />
+        <Ring box={size} size={innerSize} stroke={innerStroke} progress={inner.progress} tint={inner.tint} />
       </Svg>
-    </Svg>
+      <View style={[StyleSheet.absoluteFill, styles.centre]} pointerEvents="none">
+        {children}
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  centre: { alignItems: 'center', justifyContent: 'center' },
+});

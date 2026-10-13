@@ -62,7 +62,7 @@ function DockButton({
     return { transform: [{ translateY: -(near * near * SIZE * SWELL) / 2 }, { scale: swell }, { scale: 1 - press.value * 0.12 }] };
   });
 
-  const bg = item.primary ? accent.value : color.cardRaised;
+  const bg = item.primary ? accent.value : '#2A2A2A';
   return (
     <Animated.View style={[styles.button, { backgroundColor: bg }, style]}>{item.icon(item.primary ? accent.on : color.text)}</Animated.View>
   );
@@ -222,9 +222,10 @@ const styles = StyleSheet.create({
     padding: PAD,
     paddingBottom: PAD - 2,
     borderRadius: 34,
-    backgroundColor: 'rgba(17,17,17,0.94)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: color.hairline,
+    // A step lighter than the cards, with a visible edge, so it stands out over any of them.
+    backgroundColor: 'rgba(28,28,28,0.97)',
+    borderWidth: 1,
+    borderColor: '#2E2E2E',
     shadowColor: '#000',
     shadowOpacity: 0.55,
     shadowRadius: 18,

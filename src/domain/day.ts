@@ -57,3 +57,13 @@ export function clockTime(epochMs: number): string {
   const d = new Date(epochMs);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/**
+ * Nothing is ever logged in the future: a Day or time ahead of `now` (say, a screen left
+ * open across midnight) is pulled back to now.
+ */
+export function notInFuture(day: DayKey, eatenAt: number, now: Date = new Date()): { day: DayKey; eatenAt: number } {
+  const today = dayKeyOf(now);
+  if (day > today || eatenAt > now.getTime()) return { day: today, eatenAt: Math.min(eatenAt, now.getTime()) };
+  return { day, eatenAt };
+}

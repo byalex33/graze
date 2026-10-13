@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/changes';
 import { allEntries, deleteAllData, getGoal, getReminder, getTodayLayout, getWeightUnit } from '@/db/repo';
@@ -120,14 +120,20 @@ export default function Settings() {
         />
       </Group>
 
-      <Group title="Your data" footer="Graze keeps everything on this phone. Deleting the app deletes your data, so export first.">
+      <Group title="Your data">
         <Row icon={<ExportIcon size={17} />} label="Export as CSV" onPress={exportCsv} />
         <Row icon={<TrashIcon size={17} tint={color.danger} />} label="Delete all data" danger onPress={confirmDeleteAll} />
       </Group>
 
-      <Text style={[type.small, styles.footer]}>
-        Graze {Constants.expoConfig?.version ?? ''} · Nothing leaves this phone except food lookups
-      </Text>
+      <View style={styles.footer}>
+        <Text style={type.small}>Graze {Constants.expoConfig?.version ?? ''}</Text>
+        <Text style={type.small}>
+          Made with ❤️ by{' '}
+          <Text style={styles.link} onPress={() => Linking.openURL('https://alex.codes')} accessibilityRole="link">
+            Alex
+          </Text>
+        </Text>
+      </View>
     </SettingsPage>
   );
 }
@@ -135,5 +141,6 @@ export default function Settings() {
 const styles = StyleSheet.create({
   accentValue: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   swatch: { width: 12, height: 12, borderRadius: 6 },
-  footer: { textAlign: 'center', marginTop: space.md },
+  footer: { alignItems: 'center', gap: 4, marginTop: space.xl },
+  link: { color: color.text, textDecorationLine: 'underline' },
 });

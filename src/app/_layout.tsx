@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -26,8 +26,7 @@ function HealthSync() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
-  // Plays once per launch, over the app as it loads underneath.
-  const [intro, setIntro] = useState(true);
+
   // The splash screen stays up until the first render with content.
   if (!fontsLoaded) return null;
 
@@ -49,7 +48,8 @@ export default function RootLayout() {
             <Stack.Screen name="weigh-in" options={{ presentation: 'modal' }} />
             <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />
           </Stack>
-          {intro && <Intro onDone={() => setIntro(false)} />}
+          {/* Plays once per launch over the app as it loads, then hides itself. */}
+          <Intro />
           </AccentProvider>
         </SQLiteProvider>
       </ThemeProvider>
