@@ -176,3 +176,22 @@ export function foodFromOff(p: OffProduct): Food | null {
     servings,
   };
 }
+
+/**
+ * One Food per name and brand, ignoring case, spacing and punctuation ("M & S" is "M&S",
+ * "By Sainsbury's" is "Sainsburys").
+ * Open Food Facts often lists the same product several times under different barcodes;
+ * the copy with the most complete nutrition and servings is kept, in the first one's place.
+ */
+export function withoutDuplicates(foods: Food[]): Food[] {
+  const plain = (s: string | null) => (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const completeness = (f: Food) => Object.values(f.per100).filter((v) => v !== null).length + f.servings.length;
+  const kept = new Map<string, Food>();
+  for (const food of foods) {
+    const key = `${plain(food.name)}|${plain(food.brand?.replace(/^\s*by\s+/i, '') ?? null)}`;
+    const existing = kept.get(key);
+    if (!existing) kept.set(key, food);
+    else if (completeness(food) > completeness(existing)) kept.set(key, food);
+  }
+  return [...kept.values()];
+}

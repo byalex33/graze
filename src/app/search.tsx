@@ -14,6 +14,7 @@ import type { Food } from '@/domain/food';
 import { rankRecents } from '@/domain/recents';
 import { searchGeneric } from '@/food/generic';
 import { searchProducts } from '@/food/open-food-facts';
+import { searchIndex } from '@/food/product-index';
 import { rememberFood } from '@/food/registry';
 import { SearchIcon, StarIcon } from '@/ui/icons';
 import { color, radius, space, type } from '@/ui/theme';
@@ -27,13 +28,17 @@ type Row =
   | { kind: 'food'; key: string; food: Food }
   | { kind: 'note'; key: string; text: string };
 
-/** Search UK generic foods and Open Food Facts. Before typing, shows Favourites and Recents. */
+/**
+ * Search UK generic foods and UK products. Products come from the on-phone index, or from Open Food
+ * Facts online until it has downloaded or when it finds nothing. Before typing, shows Favourites and Recents.
+ */
 export default function Search() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ day?: string }>();
   const day = isDayKey(params.day) ? params.day : dayKeyOf(new Date());
   const [query, setQuery] = useState('');
+  const [local, setLocal] = useState<{ query: string; foods: Food[] | null } | null>(null);
   const [products, setProducts] = useState<{ query: string; foods: Food[]; error?: string } | null>(null);
 
   const favs = useQuery(favourites, []);
@@ -42,10 +47,23 @@ export default function Search() {
 
   const trimmed = query.trim();
   const generic = trimmed.length >= 2 ? searchGeneric(trimmed) : [];
-  const searching = trimmed.length >= 3 && products?.query !== trimmed;
+  // The last local results stay up while the next keystroke's (a few milliseconds) arrive.
+  const localFoods = trimmed.length >= 2 && local?.foods?.length ? local.foods : null;
+  const localDone = local?.query === trimmed;
+  const online = trimmed.length >= 3 && localDone && !localFoods;
+  const searching = online && products?.query !== trimmed;
 
   useEffect(() => {
-    if (trimmed.length < 3) return;
+    if (trimmed.length < 2) return;
+    let cancelled = false;
+    searchIndex(trimmed).then((foods) => !cancelled && setLocal({ query: trimmed, foods }));
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmed]);
+
+  useEffect(() => {
+    if (!online) return;
     const abort = new AbortController();
     const timer = setTimeout(() => {
       searchProducts(trimmed, abort.signal)
@@ -56,7 +74,7 @@ export default function Search() {
       clearTimeout(timer);
       abort.abort();
     };
-  }, [trimmed]);
+  }, [trimmed, online]);
 
   const open = (food: Food) => {
     rememberFood(food);
@@ -89,7 +107,12 @@ export default function Search() {
       rows.push({ kind: 'heading', key: 'h-gen', title: 'UK generic' });
       generic.forEach((f) => rows.push({ kind: 'food', key: f.id, food: f }));
     }
-    if (trimmed.length >= 3) {
+    if (localFoods) {
+      rows.push({ kind: 'heading', key: 'h-off', title: 'Products' });
+      localFoods.forEach((f) => rows.push({ kind: 'food', key: f.id, food: f }));
+    } else if (trimmed.length >= 3 && !localDone) {
+      rows.push({ kind: 'heading', key: 'h-off', title: 'Products', busy: true });
+    } else if (online) {
       rows.push({ kind: 'heading', key: 'h-off', title: 'Products', busy: searching });
       if (!searching && products?.error) rows.push({ kind: 'note', key: 'n-err', text: products.error });
       else if (!searching && products?.foods.length === 0) rows.push({ kind: 'note', key: 'n-none', text: 'No UK products found.' });

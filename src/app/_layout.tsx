@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DATABASE_NAME, migrate } from '@/db/database';
+import { refreshProductIndex } from '@/food/product-index';
 import { startHealthSync } from '@/health/sync';
 import { AccentProvider } from '@/ui/accent';
 import { Intro } from '@/ui/intro';
@@ -25,6 +26,14 @@ function HealthSync() {
   return null;
 }
 
+/** Fetches a newer product index in the background, once per launch. */
+function ProductIndexSync() {
+  useEffect(() => {
+    refreshProductIndex();
+  }, []);
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
 
@@ -38,6 +47,7 @@ export default function RootLayout() {
           <AccentProvider>
           <StatusBar style="light" />
           <HealthSync />
+          <ProductIndexSync />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="setup" options={{ animation: 'fade', gestureEnabled: false }} />

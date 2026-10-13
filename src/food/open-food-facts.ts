@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
-import { foodFromOff, type Food, type OffProduct } from '@/domain/food';
+import { foodFromOff, withoutDuplicates, type Food, type OffProduct } from '@/domain/food';
+import { productQueries } from './product-query';
 
 /**
  * Open Food Facts: free, crowd-sourced, good UK coverage.
@@ -49,17 +50,20 @@ export async function searchProducts(query: string, signal?: AbortSignal): Promi
   const key = query.trim().toLowerCase();
   if (searches.has(key)) return searches.get(key)!;
 
-  const now = Date.now();
-  while (recentSearchTimes.length && now - recentSearchTimes[0] > 60_000) recentSearchTimes.shift();
-  if (recentSearchTimes.length >= SEARCH_LIMIT_PER_MINUTE) throw new OffError('Searching too fast, wait a few seconds');
-  recentSearchTimes.push(now);
+  let foods: Food[] = [];
+  for (const q of productQueries(query)) {
+    const now = Date.now();
+    while (recentSearchTimes.length && now - recentSearchTimes[0] > 60_000) recentSearchTimes.shift();
+    if (recentSearchTimes.length >= SEARCH_LIMIT_PER_MINUTE) throw new OffError('Searching too fast, wait a few seconds');
+    recentSearchTimes.push(now);
 
-  const q = `${query.trim()} countries_tags:"en:united-kingdom"`;
-  const body = (await get(
-    `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&langs=en&page_size=25&fields=${FIELDS}`,
-    signal,
-  )) as { hits?: OffProduct[] } | null;
-  const foods = (body?.hits ?? []).map(foodFromOff).filter((f): f is Food => f !== null);
+    const body = (await get(
+      `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&langs=en&page_size=25&fields=${FIELDS}`,
+      signal,
+    )) as { hits?: OffProduct[] } | null;
+    foods = withoutDuplicates((body?.hits ?? []).map(foodFromOff).filter((f): f is Food => f !== null));
+    if (foods.length > 0) break;
+  }
   searches.set(key, foods);
   return foods;
 }

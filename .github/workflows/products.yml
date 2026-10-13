@@ -1,0 +1,34 @@
+# Rebuilds the on-phone UK product index from Open Food Facts' daily export and publishes it
+# to the "products" release, where the app looks for it (src/food/product-index.ts).
+name: Product index
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # Mondays, after Open Food Facts' overnight export
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the Open Food Facts export
+        run: curl -sSfL -A "Graze product index (https://github.com/byalex33/graze)" -o off.csv.gz https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz
+
+      - name: Build the UK index
+        run: python3 -I scripts/build-products.py off.csv.gz out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view products >/dev/null 2>&1 || gh release create products --latest=false --title "UK product index" \
+            --notes "UK products from Open Food Facts for Graze's on-phone search, rebuilt weekly. Data © Open Food Facts contributors, available under the Open Database Licence (https://opendatacommons.org/licenses/odbl/1-0/)."
+          # The database first, so the manifest never points at a file that isn't there yet.
+          gh release upload products out/products.db --clobber
+          gh release upload products out/products.json --clobber

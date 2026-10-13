@@ -1,4 +1,4 @@
-import { defaultPortion, foodFromOff, nutritionFor, packFromQuantity, portionLabel, soundsLikeDrink, type Food } from '../food';
+import { defaultPortion, foodFromOff, nutritionFor, packFromQuantity, portionLabel, soundsLikeDrink, withoutDuplicates, type Food } from '../food';
 import { reminderTimes } from '../reminder';
 
 const bar: Food = {
@@ -186,5 +186,29 @@ describe('reminderTimes', () => {
 
   it('schedules nothing when off', () => {
     expect(reminderTimes({ ...settings, enabled: false }, new Date(), false)).toEqual([]);
+  });
+});
+
+describe('withoutDuplicates', () => {
+  const tikka = (id: string, name: string, brand: string | null, servings = 0): Food => ({
+    ...bar,
+    id,
+    name,
+    brand,
+    servings: Array.from({ length: servings }, () => ({ label: '1 pack', amount: 400 })),
+  });
+
+  it('keeps one per name and brand, however they are written', () => {
+    const foods = [tikka('a', 'Chicken Tikka Masala', 'Tesco'), tikka('b', 'chicken  tikka masala', 'TESCO'), tikka('c', 'Brie & Bacon Sandwich', 'M & S'), tikka('d', 'Brie & Bacon Sandwich', 'M&S'), tikka('e', 'Classic houmous', "By sainsbury's"), tikka('f', 'Classic Houmous', 'Sainsburys')];
+    expect(withoutDuplicates(foods).map((f) => f.id)).toEqual(['a', 'c', 'e']);
+  });
+
+  it('keeps different brands of the same thing', () => {
+    expect(withoutDuplicates([tikka('a', 'Brie & Bacon Sandwich', 'Waitrose'), tikka('b', 'Brie & Bacon Sandwich', 'M&S')])).toHaveLength(2);
+  });
+
+  it('keeps the most complete copy, in the first one\'s place', () => {
+    const foods = [tikka('a', 'Chicken Tikka', 'Tesco'), tikka('b', 'Korma', 'Tesco'), tikka('c', 'Chicken Tikka', 'Tesco', 1)];
+    expect(withoutDuplicates(foods).map((f) => f.id)).toEqual(['c', 'b']);
   });
 });

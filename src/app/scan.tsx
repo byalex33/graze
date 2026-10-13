@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dayKeyOf, isDayKey } from '@/domain/day';
 import { lookupBarcode, OffError } from '@/food/open-food-facts';
+import { indexBarcode } from '@/food/product-index';
 import { rememberFood } from '@/food/registry';
 import { FlashIcon } from '@/ui/icons';
 import { color, radius, space, type } from '@/ui/theme';
@@ -32,7 +33,8 @@ export default function Scan() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setState({ kind: 'looking', code: data });
     try {
-      const food = await lookupBarcode(data);
+      // The phone's copy is instant and works offline; the food screen then fetches the live record.
+      const food = (await indexBarcode(data)) ?? (await lookupBarcode(data));
       if (food) {
         rememberFood(food);
         router.replace({ pathname: '/food', params: { id: food.id, day } });

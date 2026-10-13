@@ -117,6 +117,13 @@ export default function Settings() {
       <View style={styles.footer}>
         <Text style={type.small}>Graze {Constants.expoConfig?.version ?? ''}</Text>
         <Text style={type.small}>
+          Products from{' '}
+          <Text style={styles.link} onPress={() => Linking.openURL('https://world.openfoodfacts.org')} accessibilityRole="link">
+            Open Food Facts
+          </Text>{' '}
+          (ODbL)
+        </Text>
+        <Text style={type.small}>
           Made with ❤️ by{' '}
           <Text style={styles.link} onPress={() => Linking.openURL('https://alex.codes')} accessibilityRole="link">
             Alex
