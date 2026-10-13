@@ -30,7 +30,7 @@ So I built Graze. It's free, there's no account, and it never sends you a notifi
 - Streaks, badges or scores. You get one burst of strawberry confetti for your first log of the day, and that's the only cheering it does
 - Turn red when you go over. It says "250 over" and that's it
 - Make you sign up for anything
-- Send your data anywhere. It lives on your phone. The only things that leave it are barcodes and search terms, sent to Open Food Facts to look up products
+- Send your data anywhere. It lives on your phone. The only things that leave it are barcodes and search terms, sent to Open Food Facts to look up products. The app also downloads the UK product list from GitHub each week and checks Expo for app updates; neither request carries anything you've logged
 
 ## Install
 
@@ -40,7 +40,7 @@ So I built Graze. It's free, there's no account, and it never sends you a notifi
 2. Open it. Android will ask you to allow installs from your browser; allow it
 3. If Play Protect says it doesn't recognise the app, tap **More details → Install anyway**. It warns about anything that isn't from the Play Store
 
-New versions install over the top. **Don't uninstall to update**: your data lives in the app and uninstalling deletes it. Export a CSV first if you're ever unsure.
+From 0.1.2, most updates arrive by themselves: the app downloads them in the background and you're on the new version the next time you open it. Bigger changes still come as a new APK, which installs over the top. **Don't uninstall to update**: your data lives in the app and uninstalling deletes it. Export a CSV first if you're ever unsure.
 
 ### iPhone
 
