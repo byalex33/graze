@@ -12,6 +12,7 @@ import { formatWeight, fromWheel, toWheel, type WeightUnit } from '@/domain/weig
 import { useHealthLinked } from '@/health/use-health';
 import { healthStore } from '@/health/store';
 import { color, radius, space, type } from '@/ui/theme';
+import { useOnce } from '@/ui/use-once';
 import { range, WheelPicker } from '@/ui/wheel-picker';
 
 const UNITS: { unit: WeightUnit; label: string }[] = [
@@ -41,16 +42,15 @@ export default function WeighInScreen() {
   const shownUnit = unit ?? savedUnit;
   const lastKg = last?.length ? last[last.length - 1].kg : DEFAULT_KG;
   const shownKg = kg ?? lastKg;
+  const [save, saving] = useOnce(async () => {
+    await addWeighIn(db, { at: Date.now(), kg: Math.round(shownKg * 100) / 100 });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.back();
+  });
   if (!shownUnit || !last) return <View style={styles.screen} />;
 
   const [majors, minors, sep, minorUnit] = WHEELS[shownUnit];
   const [major, minor] = toWheel(shownKg, shownUnit);
-
-  const save = async () => {
-    await addWeighIn(db, { at: Date.now(), kg: Math.round(shownKg * 100) / 100 });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
-  };
 
   const switchUnit = (u: WeightUnit) => {
     Haptics.selectionAsync();
@@ -124,7 +124,11 @@ export default function WeighInScreen() {
         )}
       </View>
 
-      <Pressable onPress={save} style={({ pressed }) => [styles.save, pressed && { opacity: 0.85 }]}>
+      <Pressable
+        onPress={save}
+        disabled={saving}
+        style={({ pressed }) => [styles.save, pressed && { opacity: 0.85 }, saving && { opacity: 0.6 }]}
+      >
         <Text style={[type.bodyStrong, { color: color.bg }]}>Save {formatWeight(shownKg, shownUnit)}</Text>
       </Pressable>
     </View>

@@ -47,6 +47,25 @@ export function signatureOf(e: { name: string | null; foodId: string | null }): 
   return name ? `quick:${name}` : null;
 }
 
+/**
+ * The Portion an edited Entry keeps: its own while the numbers are untouched,
+ * none once they no longer match it.
+ */
+export function portionAfterEdit(e: Nutrition & { portion: string | null }, edited: Nutrition): string | null {
+  const same = e.kcal === edited.kcal && e.protein === edited.protein && e.carbs === edited.carbs && e.fat === edited.fat;
+  return same ? e.portion : null;
+}
+
+/** Whether the Favourite star shows filled: the user's tap if they made one, otherwise the truth. */
+export function isStarred(
+  choice: boolean | null,
+  signature: string | null,
+  favourites: readonly { signature: string }[],
+): boolean {
+  if (!signature) return false;
+  return choice ?? favourites.some((f) => f.signature === signature);
+}
+
 export interface DayTotals {
   kcal: number;
   protein: number;

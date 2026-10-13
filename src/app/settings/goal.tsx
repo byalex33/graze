@@ -24,7 +24,7 @@ export default function GoalSettings() {
             goal={goal}
             onChange={(g) => {
               setLocal(g);
-              setGoal(db, g);
+              setGoal(db, g).catch((e) => console.warn('Saving the Goal failed', e));
             }}
           />
         )}

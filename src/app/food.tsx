@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
 import { addEntry, getUnitOverride, isFavourite, setFavourite, setUnitOverride } from '@/db/repo';
-import { dayKeyOf, dayLabel, eatenAtFor, type DayKey } from '@/domain/day';
+import { dayKeyOf, dayLabel, eatenAtFor, isDayKey } from '@/domain/day';
 import { formatNumber } from '@/domain/entry';
 import { defaultPortion, entryName, nutritionFor, portionAmount, portionLabel, QUICK_AMOUNTS, withUnit, type Food, type Portion, type Unit } from '@/domain/food';
 import { lookupBarcode } from '@/food/open-food-facts';
@@ -15,6 +15,7 @@ import { foodById, rememberFood } from '@/food/registry';
 import { StarIcon } from '@/ui/icons';
 import { RollingNumber } from '@/ui/rolling-number';
 import { color, family, radius, space, type } from '@/ui/theme';
+import { useOnce } from '@/ui/use-once';
 import { WheelPicker } from '@/ui/wheel-picker';
 
 const COUNTS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10];
@@ -33,18 +34,22 @@ function Macro({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-/** Pick how much of a Food you had, see what that comes to, log it. Params: `id`, `day`. */
+/**
+ * Pick how much of a Food you had, see what that comes to, log it. Params: `id`, `day`.
+ * Both can arrive from a graze:// link, so a missing `id` shows the unavailable state and a bad `day` means today.
+ */
 export default function FoodScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id: string; day?: DayKey }>();
-  const day = params.day ?? dayKeyOf(new Date());
+  const params = useLocalSearchParams<{ id?: string; day?: string }>();
+  const id = typeof params.id === 'string' && params.id ? params.id : null;
+  const day = isDayKey(params.day) ? params.day : dayKeyOf(new Date());
   // Search results lack serving and pack sizes; the full product record has them.
   const [fresh, setFresh] = useState<Food | null>(null);
   useEffect(() => {
-    if (!params.id.startsWith('off:')) return;
+    if (!id?.startsWith('off:')) return;
     let cancelled = false;
-    lookupBarcode(params.id.slice(4))
+    lookupBarcode(id.slice(4))
       .then((full) => {
         if (full && !cancelled) {
           rememberFood(full);
@@ -55,9 +60,9 @@ export default function FoodScreen() {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
-  const found = fresh ?? foodById(params.id);
-  const savedUnit = useQuery((d) => getUnitOverride(d, params.id), [params.id]);
+  }, [id]);
+  const found = fresh ?? (id ? foodById(id) : null);
+  const savedUnit = useQuery(async (d) => (id ? getUnitOverride(d, id) : null), [id]);
   const [chosenUnit, setChosenUnit] = useState<Unit | null>(null);
   const unit = chosenUnit ?? savedUnit ?? found?.unit;
   const food = found && unit ? withUnit(found, unit) : null;
@@ -66,9 +71,19 @@ export default function FoodScreen() {
   const portion = chosenPortion ?? (food ? defaultPortion(food) : null);
   const [amountText, setAmountText] = useState<string | null>(null);
   const shownAmount = amountText ?? (portion?.kind === 'amount' ? String(portion.amount) : String(QUICK_AMOUNTS[food?.unit ?? 'g'][1]));
-  const starredInDb = useQuery((d) => isFavourite(d, `food:${params.id}`), [params.id]);
+  const starredInDb = useQuery(async (d) => (id ? isFavourite(d, `food:${id}`) : false), [id]);
   const [starred, setStarred] = useState<boolean | null>(null);
   const isStarred = starred ?? starredInDb ?? false;
+
+  const [log, logging] = useOnce(async () => {
+    if (!food || !portion) return;
+    Keyboard.dismiss();
+    const entry = { ...nutritionFor(food, portion), name: entryName(food), foodId: food.id, portion: portionLabel(food, portion) };
+    await addEntry(db, { ...entry, day, eatenAt: eatenAtFor(day).getTime() });
+    if (starred !== null) await setFavourite(db, entry, starred);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.dismissAll();
+  });
 
   if (savedUnit === undefined && found) return <View style={styles.screen} />;
   if (!food || !portion) {
@@ -81,15 +96,6 @@ export default function FoodScreen() {
   }
 
   const n = nutritionFor(food, portion);
-
-  const log = async () => {
-    Keyboard.dismiss();
-    const entry = { ...n, name: entryName(food), foodId: food.id, portion: portionLabel(food, portion) };
-    await addEntry(db, { ...entry, day, eatenAt: eatenAtFor(day).getTime() });
-    if (starred !== null) await setFavourite(db, entry, starred);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.dismissAll();
-  };
 
   const switchUnit = () => {
     const next: Unit = food.unit === 'g' ? 'ml' : 'g';
@@ -212,7 +218,11 @@ export default function FoodScreen() {
         )}
       </ScrollView>
 
-      <Pressable onPress={log} style={({ pressed }) => [styles.logButton, pressed && { opacity: 0.85 }]}>
+      <Pressable
+        onPress={log}
+        disabled={logging}
+        style={({ pressed }) => [styles.logButton, pressed && { opacity: 0.85 }, logging && { opacity: 0.6 }]}
+      >
         <Text style={[type.bodyStrong, { color: color.bg }]}>Log {portionLabel(food, portion)}</Text>
       </Pressable>
     </View>

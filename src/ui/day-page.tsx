@@ -19,7 +19,8 @@ import { Sparkline } from './sparkline';
 import { useAccent } from './accent';
 import { color, family, radius, space, type } from './theme';
 
-const TREND_DAYS = 14;
+/** Days in the "Daily average" sparkline, ending on the Day shown. */
+export const TREND_DAYS = 14;
 const WEIGHT_DAYS = 30;
 export const HEATMAP_WEEKS = 20;
 

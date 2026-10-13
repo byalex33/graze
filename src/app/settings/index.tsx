@@ -1,14 +1,11 @@
 import Constants from 'expo-constants';
-import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/changes';
-import { allEntries, deleteAllData, getGoal, getReminder, getTodayLayout, getWeightUnit } from '@/db/repo';
-import { entriesToCsv } from '@/domain/csv';
-import { dayKeyOf } from '@/domain/day';
+import { exportCsv } from '@/db/export';
+import { deleteAllData, getGoal, getReminder, getTodayLayout, getWeightUnit } from '@/db/repo';
 import { formatNumber } from '@/domain/entry';
 import { TODAY_SECTIONS } from '@/domain/today-layout';
 import { useHealthLinked } from '@/health/use-health';
@@ -32,14 +29,6 @@ export default function Settings() {
   const healthLinked = useHealthLinked();
 
   const shownSections = layout ? TODAY_SECTIONS.filter((s) => layout[s.key]).length : null;
-
-  const exportCsv = async () => {
-    const file = new File(Paths.cache, `graze-${dayKeyOf(new Date())}.csv`);
-    if (file.exists) file.delete();
-    file.create();
-    file.write(entriesToCsv(await allEntries(db)));
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Export Graze data', UTI: 'public.comma-separated-values-text' });
-  };
 
   const confirmDeleteAll = () =>
     Alert.alert(
@@ -121,7 +110,7 @@ export default function Settings() {
       </Group>
 
       <Group title="Your data">
-        <Row icon={<ExportIcon size={17} />} label="Export as CSV" onPress={exportCsv} />
+        <Row icon={<ExportIcon size={17} />} label="Export as CSV" onPress={() => exportCsv(db)} />
         <Row icon={<TrashIcon size={17} tint={color.danger} />} label="Delete all data" danger onPress={confirmDeleteAll} />
       </Group>
 

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useQuery } from '@/db/changes';
 import { addEntry, entriesSince, favourites } from '@/db/repo';
-import { dayKeyOf, eatenAtFor, type DayKey } from '@/domain/day';
+import { dayKeyOf, eatenAtFor, isDayKey } from '@/domain/day';
 import { formatNumber, type Relog } from '@/domain/entry';
 import type { Food } from '@/domain/food';
 import { rankRecents } from '@/domain/recents';
@@ -17,6 +17,7 @@ import { searchProducts } from '@/food/open-food-facts';
 import { rememberFood } from '@/food/registry';
 import { SearchIcon, StarIcon } from '@/ui/icons';
 import { color, radius, space, type } from '@/ui/theme';
+import { useOnce } from '@/ui/use-once';
 
 const SEARCH_DELAY_MS = 600;
 
@@ -30,8 +31,8 @@ type Row =
 export default function Search() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ day?: DayKey }>();
-  const day = params.day ?? dayKeyOf(new Date());
+  const params = useLocalSearchParams<{ day?: string }>();
+  const day = isDayKey(params.day) ? params.day : dayKeyOf(new Date());
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<{ query: string; foods: Food[]; error?: string } | null>(null);
 
@@ -63,12 +64,12 @@ export default function Search() {
     router.push({ pathname: '/food', params: { id: food.id, day } });
   };
 
-  const relog = async (r: Relog) => {
+  const [relog, relogging] = useOnce(async (r: Relog) => {
     await addEntry(db, { ...r, day, eatenAt: eatenAtFor(day).getTime() });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Keyboard.dismiss();
     router.back();
-  };
+  });
 
   const rows: Row[] = [];
   if (!trimmed) {
@@ -138,7 +139,11 @@ export default function Search() {
               return <Text style={[type.label, styles.note]}>{item.text}</Text>;
             case 'relog':
               return (
-                <Pressable onPress={() => relog(item.relog)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+                <Pressable
+                  onPress={() => relog(item.relog)}
+                  disabled={relogging}
+                  style={({ pressed }) => [styles.row, pressed && styles.pressed, relogging && styles.busy]}
+                >
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text numberOfLines={1} style={type.bodyStrong}>{item.relog.name}</Text>
                     <Text numberOfLines={1} style={type.small}>{item.relog.portion ?? 'Quick Add'}</Text>
@@ -186,4 +191,5 @@ const styles = StyleSheet.create({
   note: { marginTop: space.lg, lineHeight: 20 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, paddingHorizontal: space.md, borderRadius: radius.md },
   pressed: { backgroundColor: color.card },
+  busy: { opacity: 0.6 },
 });

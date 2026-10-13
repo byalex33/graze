@@ -1,9 +1,14 @@
 import type { Entry } from './entry';
 
+/** Text a spreadsheet would run as a formula (OWASP CSV injection). */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+/** Text is quoted when needed and kept from running as a formula; numbers are left as numbers. */
 function cell(value: string | number | null): string {
   if (value === null) return '';
-  const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  if (typeof value === 'number') return String(value);
+  const s = FORMULA_START.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function entriesToCsv(entries: readonly Entry[]): string {

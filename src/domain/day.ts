@@ -11,6 +11,12 @@ export function dayKeyOf(date: Date): DayKey {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** Whether `value` is a real calendar date written as a DayKey, e.g. from a route param. */
+export function isDayKey(value: unknown): value is DayKey {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return dayKeyOf(startOfDay(value)) === value;
+}
+
 /** Local midnight at the start of the Day. */
 export function startOfDay(day: DayKey): Date {
   const [y, m, d] = day.split('-').map(Number);

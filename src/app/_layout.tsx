@@ -1,16 +1,17 @@
 import { useFonts } from 'expo-font';
-import { DarkTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DATABASE_NAME, migrate } from '@/db/database';
 import { startHealthSync } from '@/health/sync';
 import { AccentProvider } from '@/ui/accent';
 import { Intro } from '@/ui/intro';
-import { color, fonts } from '@/ui/theme';
+import { color, fonts, radius, space, type } from '@/ui/theme';
 
 const theme = {
   ...DarkTheme,
@@ -56,3 +57,32 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+/** Plain-font stand-ins for when a render fails before the custom fonts have loaded. */
+const fallbackType = StyleSheet.create({
+  title: { color: color.text, fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+  bodyStrong: { color: color.text, fontSize: 16, fontWeight: '500' },
+  label: { color: color.muted, fontSize: 13 },
+});
+
+/** Shown in place of the app when something fails to render. Nothing saved is lost; retrying re-renders. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const [fontsLoaded] = useFonts(fonts);
+  const text = fontsLoaded ? type : fallbackType;
+  return (
+    <View style={styles.error}>
+      <StatusBar style="light" />
+      <Text style={text.title}>Something went wrong</Text>
+      <Text style={[text.label, styles.errorText]}>Everything you&apos;ve logged is safe.</Text>
+      <Pressable onPress={() => retry()} style={({ pressed }) => [styles.retry, pressed && { opacity: 0.85 }]}>
+        <Text style={[text.bodyStrong, { color: color.bg }]}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  error: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, backgroundColor: color.bg },
+  errorText: { textAlign: 'center', marginTop: space.sm, marginBottom: space.xl },
+  retry: { backgroundColor: color.text, borderRadius: radius.pill, paddingVertical: space.md, paddingHorizontal: space.xl },
+});

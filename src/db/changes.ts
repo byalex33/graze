@@ -25,7 +25,10 @@ export function useDataVersion(): number {
   return useSyncExternalStore(subscribe, () => version);
 }
 
-/** Runs `query` now and after every write. `deps` are the query's own inputs. */
+/**
+ * Runs `query` now and after every write. `deps` are the query's own inputs.
+ * A failed read is logged and the last good result kept.
+ */
 export function useQuery<T>(
   query: (db: SQLiteDatabase) => Promise<T>,
   deps: readonly unknown[],
@@ -36,9 +39,12 @@ export function useQuery<T>(
 
   useEffect(() => {
     let cancelled = false;
-    query(db).then((value) => {
-      if (!cancelled) setResult(value);
-    });
+    query(db).then(
+      (value) => {
+        if (!cancelled) setResult(value);
+      },
+      (e) => console.warn('Query failed, keeping the last result', query.name || '(inline query)', deps, e),
+    );
     return () => {
       cancelled = true;
     };

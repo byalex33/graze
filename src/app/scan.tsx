@@ -6,7 +6,7 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { dayKeyOf, type DayKey } from '@/domain/day';
+import { dayKeyOf, isDayKey } from '@/domain/day';
 import { lookupBarcode, OffError } from '@/food/open-food-facts';
 import { rememberFood } from '@/food/registry';
 import { FlashIcon } from '@/ui/icons';
@@ -19,8 +19,8 @@ const FOOD_BARCODES = ['ean13', 'ean8', 'upc_a', 'upc_e'] as const;
 /** Point at a barcode; Open Food Facts fills in the rest. Params: `day`. */
 export default function Scan() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ day?: DayKey }>();
-  const day = params.day ?? dayKeyOf(new Date());
+  const params = useLocalSearchParams<{ day?: string }>();
+  const day = isDayKey(params.day) ? params.day : dayKeyOf(new Date());
   const [permission, requestPermission] = useCameraPermissions();
   const [state, setState] = useState<State>({ kind: 'scanning' });
   const [torch, setTorch] = useState(false);
